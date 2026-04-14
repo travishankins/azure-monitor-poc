@@ -1,0 +1,224 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Alert Overview & Operational Dashboard\n---\nConsolidated view of all fired alerts, Windows error/warning events, and data ingestion health. Provides operational awareness similar to a SCOM Operations Console.\n\n**Data Sources:** Heartbeat, Event, Perf, AlertsManagementResources (ARG)"
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "h1c47a42-89c1-4b10-8c31-0e9e70e0c301",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "label": "Time Range",
+            "type": 4,
+            "isRequired": true,
+            "typeSettings": {
+              "selectableValues": [
+                { "durationMs": 3600000 },
+                { "durationMs": 14400000 },
+                { "durationMs": 43200000 },
+                { "durationMs": 86400000, "isInitialTime": true },
+                { "durationMs": 604800000 },
+                { "durationMs": 2592000000 }
+              ],
+              "allowCustom": true
+            },
+            "value": {
+              "durationMs": 86400000
+            }
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Environment Health Tiles"
+      },
+      "name": "section-health-tiles"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Heartbeat\n| summarize LastHeartbeat = max(TimeGenerated) by Computer\n| extend Status = iff(LastHeartbeat < ago(5m), 'Offline', 'Online')\n| summarize\n    Online = countif(Status == 'Online'),\n    Offline = countif(Status == 'Offline'),\n    Total = count()\n| project\n    ['Total Servers'] = Total,\n    ['Online'] = Online,\n    ['Offline'] = Offline",
+        "size": 3,
+        "title": "Server Fleet Status",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "name": "fleet-status-tiles"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Windows Event Errors & Warnings\nApplication and System event logs — Warning, Error, and Critical events."
+      },
+      "name": "section-windows-events"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Event\n| where EventLog in ('Application', 'System')\n| where EventLevelName in ('Error', 'Warning', 'Critical')\n| summarize EventCount = count() by EventLevelName, bin(TimeGenerated, 1h)\n| render timechart",
+        "size": 0,
+        "title": "Error & Warning Events Over Time",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "name": "events-over-time"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Event\n| where EventLog in ('Application', 'System')\n| where EventLevelName in ('Error', 'Critical')\n| summarize EventCount = count() by Source, EventID, EventLog\n| sort by EventCount desc\n| take 25\n| project ['Event Source'] = Source, ['Event ID'] = EventID, ['Log'] = EventLog, ['Count'] = EventCount",
+        "size": 0,
+        "title": "Top 25 Error/Critical Events by Source",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "Count",
+              "formatter": 8,
+              "formatOptions": {
+                "palette": "greenRed"
+              }
+            }
+          ]
+        }
+      },
+      "name": "top-error-events"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Event\n| where EventLog in ('Application', 'System')\n| where EventLevelName in ('Error', 'Critical')\n| summarize EventCount = count() by Computer\n| sort by EventCount desc\n| take 20\n| render barchart",
+        "size": 0,
+        "title": "Servers with Most Errors/Critical Events",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "barchart"
+      },
+      "name": "errors-by-server"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Servers Breaching Performance Thresholds\nIdentifies servers currently exceeding SCOM-equivalent warning/critical thresholds."
+      },
+      "name": "section-threshold-breaches"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let cpuBreach = Perf\n| where ObjectName == 'Processor' and CounterName == '% Processor Time' and InstanceName == '_Total'\n| summarize AvgCPU = round(avg(CounterValue), 1) by Computer\n| where AvgCPU > 85\n| extend Metric = 'CPU %', Value = tostring(AvgCPU), Severity = iff(AvgCPU > 95, '🔴 Critical', '🟡 Warning');\nlet memBreach = Perf\n| where ObjectName == 'Memory' and CounterName == 'Available MBytes'\n| summarize AvgMB = round(avg(CounterValue), 0) by Computer\n| where AvgMB < 1024\n| extend Metric = 'Avail Memory MB', Value = tostring(AvgMB), Severity = iff(AvgMB < 500, '🔴 Critical', '🟡 Warning');\nlet diskBreach = Perf\n| where ObjectName == 'LogicalDisk' and CounterName == '% Free Space'\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| summarize MinFree = round(min(CounterValue), 1) by Computer\n| where MinFree < 15\n| extend Metric = 'Disk Free %', Value = tostring(MinFree), Severity = iff(MinFree < 10, '🔴 Critical', '🟡 Warning');\ncpuBreach\n| union memBreach\n| union diskBreach\n| project Computer, Metric, Value, Severity\n| sort by Severity asc, Computer asc",
+        "size": 0,
+        "title": "Servers Exceeding Performance Thresholds (CPU >85%, Memory <1GB, Disk <15%)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table"
+      },
+      "name": "threshold-breach-table"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Data Ingestion Health\nMonitors data collection volume and recency to ensure DCRs and AMA are functioning correctly."
+      },
+      "name": "section-ingestion"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Usage\n| where TimeGenerated > ago(24h)\n| summarize DataIngested_MB = round(sum(Quantity), 2) by DataType\n| sort by DataIngested_MB desc",
+        "size": 0,
+        "title": "Data Ingestion by Table (Last 24h, MB)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "DataIngested_MB",
+              "formatter": 8,
+              "formatOptions": {
+                "palette": "blue"
+              }
+            }
+          ]
+        }
+      },
+      "name": "ingestion-by-table"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Usage\n| where TimeGenerated > ago(7d)\n| summarize DataIngested_MB = round(sum(Quantity), 2) by DataType, bin(TimeGenerated, 1d)\n| render timechart",
+        "size": 0,
+        "title": "Daily Data Ingestion Trend by Table (Last 7 Days)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "name": "ingestion-trend"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Agent Health\nVerifies which servers are actively reporting and the last time each data type was received."
+      },
+      "name": "section-agent-health"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Heartbeat\n| summarize LastHeartbeat = max(TimeGenerated), HeartbeatCount = count() by Computer, Category, OSType, Version\n| extend AgentStatus = iff(LastHeartbeat < ago(5m), '🔴 Stale', '🟢 Active')\n| project Computer, AgentStatus, ['Agent Type'] = Category, ['OS'] = OSType, ['Agent Version'] = Version, ['Last Heartbeat'] = LastHeartbeat, ['Heartbeats (Period)'] = HeartbeatCount\n| sort by AgentStatus asc, Computer asc",
+        "size": 0,
+        "title": "Agent Health & Version",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table"
+      },
+      "name": "agent-health-table"
+    }
+  ],
+  "fallbackResourceIds": [],
+  "fromTemplateId": "custom-contoso-alert-overview",
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

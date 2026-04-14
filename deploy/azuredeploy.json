@@ -1,0 +1,586 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "Contoso Azure Monitor PoC — Action Group and Alert Rules only. Requires an existing Log Analytics Workspace. DCRs are created separately via the Azure Portal."
+  },
+  "parameters": {
+    "workspaceName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the EXISTING Log Analytics workspace (customer creates this beforehand)."
+      }
+    },
+    "workspaceResourceGroup": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().name]",
+      "metadata": {
+        "description": "Resource group containing the existing Log Analytics workspace. Defaults to the deployment resource group."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for alert rules."
+      }
+    },
+    "actionGroupName": {
+      "type": "string",
+      "defaultValue": "ag-email-il-01"
+    },
+    "actionGroupShortName": {
+      "type": "string",
+      "defaultValue": "AgEmailIL01",
+      "maxLength": 12
+    },
+    "notificationEmail": {
+      "type": "string",
+      "metadata": {
+        "description": "Primary admin email for alert notifications."
+      }
+    },
+    "notificationEmailOps": {
+      "type": "string",
+      "metadata": {
+        "description": "Ops team email for alert notifications."
+      }
+    },
+    "cpuWarningThreshold": {
+      "type": "int",
+      "defaultValue": 85
+    },
+    "cpuCriticalThreshold": {
+      "type": "int",
+      "defaultValue": 95
+    },
+    "memoryWarningThresholdMB": {
+      "type": "int",
+      "defaultValue": 1024
+    },
+    "memoryCriticalThresholdMB": {
+      "type": "int",
+      "defaultValue": 500
+    },
+    "diskWarningThresholdPercent": {
+      "type": "int",
+      "defaultValue": 15
+    },
+    "diskCriticalThresholdPercent": {
+      "type": "int",
+      "defaultValue": 10
+    },
+    "heartbeatThresholdMinutes": {
+      "type": "int",
+      "defaultValue": 5
+    }
+  },
+  "variables": {
+    "workspaceResourceId": "[resourceId(parameters('workspaceResourceGroup'), 'Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]",
+    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', parameters('actionGroupName'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Insights/actionGroups",
+      "apiVersion": "2023-01-01",
+      "name": "[parameters('actionGroupName')]",
+      "location": "Global",
+      "tags": {
+        "project": "contoso-monitor-poc",
+        "createdBy": "arm-template"
+      },
+      "properties": {
+        "groupShortName": "[parameters('actionGroupShortName')]",
+        "enabled": true,
+        "emailReceivers": [
+          {
+            "name": "Contoso-Admin",
+            "emailAddress": "[parameters('notificationEmail')]",
+            "useCommonAlertSchema": true
+          },
+          {
+            "name": "Contoso-Ops",
+            "emailAddress": "[parameters('notificationEmailOps')]",
+            "useCommonAlertSchema": true
+          }
+        ]
+      }
+    },
+
+    {
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2023-03-15-preview",
+      "name": "alrt-heartbeat-il-01",
+      "location": "[parameters('location')]",
+      "dependsOn": ["[variables('actionGroupId')]"],
+      "tags": {
+        "project": "contoso-monitor-poc",
+        "scope": "availability",
+        "scomEquivalent": "Heartbeat Monitor",
+        "severity": "critical",
+        "createdBy": "arm-template"
+      },
+      "properties": {
+        "displayName": "Contoso PoC — Server Unreachable (No Heartbeat)",
+        "description": "[concat('Fires when a server has not sent a heartbeat for ', parameters('heartbeatThresholdMinutes'), ' minutes.')]",
+        "severity": 1,
+        "enabled": true,
+        "evaluationFrequency": "PT5M",
+        "windowSize": "PT10M",
+        "scopes": ["[variables('workspaceResourceId')]"],
+        "criteria": {
+          "allOf": [
+            {
+              "query": "[concat('Heartbeat\n| summarize LastHeartbeat = max(TimeGenerated) by Computer, ResourceId\n| where LastHeartbeat < ago(', parameters('heartbeatThresholdMinutes'), 'm)\n| project Computer, LastHeartbeat, MinutesSinceHeartbeat = datetime_diff(\"minute\", now(), LastHeartbeat), ResourceId')]",
+              "timeAggregation": "Count",
+              "operator": "GreaterThan",
+              "threshold": 0,
+              "dimensions": [
+                {
+                  "name": "Computer",
+                  "operator": "Include",
+                  "values": ["*"]
+                }
+              ],
+              "failingPeriods": {
+                "numberOfEvaluationPeriods": 1,
+                "minFailingPeriodsToAlert": 1
+              }
+            }
+          ]
+        },
+        "autoMitigate": true,
+        "actions": {
+          "actionGroups": ["[variables('actionGroupId')]"]
+        }
+      }
+    },
+
+    {
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2023-03-15-preview",
+      "name": "alrt-cpu-warning-il-01",
+      "location": "[parameters('location')]",
+      "dependsOn": ["[variables('actionGroupId')]"],
+      "tags": {
+        "project": "contoso-monitor-poc",
+        "scope": "performance",
+        "scomEquivalent": "Processor % Processor Time",
+        "severity": "warning",
+        "createdBy": "arm-template"
+      },
+      "properties": {
+        "displayName": "[concat('Contoso PoC — CPU Usage Warning (>', parameters('cpuWarningThreshold'), '%)')]",
+        "description": "[concat('Average CPU exceeds ', parameters('cpuWarningThreshold'), '% over 10 minutes.')]",
+        "severity": 2,
+        "enabled": true,
+        "evaluationFrequency": "PT5M",
+        "windowSize": "PT10M",
+        "scopes": ["[variables('workspaceResourceId')]"],
+        "criteria": {
+          "allOf": [
+            {
+              "query": "[concat('Perf\n| where ObjectName == \"Processor\" and CounterName == \"% Processor Time\" and InstanceName == \"_Total\"\n| summarize AvgCPU = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| where AvgCPU > ', parameters('cpuWarningThreshold'), '\n| project Computer, AvgCPU, TimeGenerated')]",
+              "timeAggregation": "Count",
+              "operator": "GreaterThan",
+              "threshold": 0,
+              "dimensions": [
+                {
+                  "name": "Computer",
+                  "operator": "Include",
+                  "values": ["*"]
+                }
+              ],
+              "failingPeriods": {
+                "numberOfEvaluationPeriods": 2,
+                "minFailingPeriodsToAlert": 2
+              }
+            }
+          ]
+        },
+        "autoMitigate": true,
+        "actions": {
+          "actionGroups": ["[variables('actionGroupId')]"]
+        }
+      }
+    },
+
+    {
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2023-03-15-preview",
+      "name": "alrt-cpu-critical-il-01",
+      "location": "[parameters('location')]",
+      "dependsOn": ["[variables('actionGroupId')]"],
+      "tags": {
+        "project": "contoso-monitor-poc",
+        "scope": "performance",
+        "scomEquivalent": "Processor % Processor Time",
+        "severity": "critical",
+        "createdBy": "arm-template"
+      },
+      "properties": {
+        "displayName": "[concat('Contoso PoC — CPU Usage Critical (>', parameters('cpuCriticalThreshold'), '%)')]",
+        "description": "[concat('Average CPU exceeds ', parameters('cpuCriticalThreshold'), '% over 5 minutes.')]",
+        "severity": 1,
+        "enabled": true,
+        "evaluationFrequency": "PT5M",
+        "windowSize": "PT5M",
+        "scopes": ["[variables('workspaceResourceId')]"],
+        "criteria": {
+          "allOf": [
+            {
+              "query": "[concat('Perf\n| where ObjectName == \"Processor\" and CounterName == \"% Processor Time\" and InstanceName == \"_Total\"\n| summarize AvgCPU = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| where AvgCPU > ', parameters('cpuCriticalThreshold'), '\n| project Computer, AvgCPU, TimeGenerated')]",
+              "timeAggregation": "Count",
+              "operator": "GreaterThan",
+              "threshold": 0,
+              "dimensions": [
+                {
+                  "name": "Computer",
+                  "operator": "Include",
+                  "values": ["*"]
+                }
+              ],
+              "failingPeriods": {
+                "numberOfEvaluationPeriods": 1,
+                "minFailingPeriodsToAlert": 1
+              }
+            }
+          ]
+        },
+        "autoMitigate": true,
+        "actions": {
+          "actionGroups": ["[variables('actionGroupId')]"]
+        }
+      }
+    },
+
+    {
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2023-03-15-preview",
+      "name": "alrt-memory-warning-il-01",
+      "location": "[parameters('location')]",
+      "dependsOn": ["[variables('actionGroupId')]"],
+      "tags": {
+        "project": "contoso-monitor-poc",
+        "scope": "performance",
+        "scomEquivalent": "Memory Available MBytes",
+        "severity": "warning",
+        "createdBy": "arm-template"
+      },
+      "properties": {
+        "displayName": "[concat('Contoso PoC — Low Memory Warning (<', parameters('memoryWarningThresholdMB'), ' MB)')]",
+        "description": "[concat('Available memory below ', parameters('memoryWarningThresholdMB'), ' MB.')]",
+        "severity": 2,
+        "enabled": true,
+        "evaluationFrequency": "PT5M",
+        "windowSize": "PT10M",
+        "scopes": ["[variables('workspaceResourceId')]"],
+        "criteria": {
+          "allOf": [
+            {
+              "query": "[concat('Perf\n| where ObjectName == \"Memory\" and CounterName == \"Available MBytes\"\n| summarize AvgAvailMB = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| where AvgAvailMB < ', parameters('memoryWarningThresholdMB'), '\n| project Computer, AvgAvailMB, TimeGenerated')]",
+              "timeAggregation": "Count",
+              "operator": "GreaterThan",
+              "threshold": 0,
+              "dimensions": [
+                {
+                  "name": "Computer",
+                  "operator": "Include",
+                  "values": ["*"]
+                }
+              ],
+              "failingPeriods": {
+                "numberOfEvaluationPeriods": 2,
+                "minFailingPeriodsToAlert": 2
+              }
+            }
+          ]
+        },
+        "autoMitigate": true,
+        "actions": {
+          "actionGroups": ["[variables('actionGroupId')]"]
+        }
+      }
+    },
+
+    {
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2023-03-15-preview",
+      "name": "alrt-memory-critical-il-01",
+      "location": "[parameters('location')]",
+      "dependsOn": ["[variables('actionGroupId')]"],
+      "tags": {
+        "project": "contoso-monitor-poc",
+        "scope": "performance",
+        "scomEquivalent": "Memory Available MBytes",
+        "severity": "critical",
+        "createdBy": "arm-template"
+      },
+      "properties": {
+        "displayName": "[concat('Contoso PoC — Low Memory Critical (<', parameters('memoryCriticalThresholdMB'), ' MB)')]",
+        "description": "[concat('Available memory below ', parameters('memoryCriticalThresholdMB'), ' MB.')]",
+        "severity": 1,
+        "enabled": true,
+        "evaluationFrequency": "PT5M",
+        "windowSize": "PT5M",
+        "scopes": ["[variables('workspaceResourceId')]"],
+        "criteria": {
+          "allOf": [
+            {
+              "query": "[concat('Perf\n| where ObjectName == \"Memory\" and CounterName == \"Available MBytes\"\n| summarize AvgAvailMB = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| where AvgAvailMB < ', parameters('memoryCriticalThresholdMB'), '\n| project Computer, AvgAvailMB, TimeGenerated')]",
+              "timeAggregation": "Count",
+              "operator": "GreaterThan",
+              "threshold": 0,
+              "dimensions": [
+                {
+                  "name": "Computer",
+                  "operator": "Include",
+                  "values": ["*"]
+                }
+              ],
+              "failingPeriods": {
+                "numberOfEvaluationPeriods": 1,
+                "minFailingPeriodsToAlert": 1
+              }
+            }
+          ]
+        },
+        "autoMitigate": true,
+        "actions": {
+          "actionGroups": ["[variables('actionGroupId')]"]
+        }
+      }
+    },
+
+    {
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2023-03-15-preview",
+      "name": "alrt-disk-warning-il-01",
+      "location": "[parameters('location')]",
+      "dependsOn": ["[variables('actionGroupId')]"],
+      "tags": {
+        "project": "contoso-monitor-poc",
+        "scope": "performance",
+        "scomEquivalent": "LogicalDisk % Free Space",
+        "severity": "warning",
+        "createdBy": "arm-template"
+      },
+      "properties": {
+        "displayName": "[concat('Contoso PoC — Low Disk Space Warning (<', parameters('diskWarningThresholdPercent'), '% Free)')]",
+        "description": "[concat('Free disk space below ', parameters('diskWarningThresholdPercent'), '%.')]",
+        "severity": 2,
+        "enabled": true,
+        "evaluationFrequency": "PT5M",
+        "windowSize": "PT10M",
+        "scopes": ["[variables('workspaceResourceId')]"],
+        "criteria": {
+          "allOf": [
+            {
+              "query": "[concat('Perf\n| where ObjectName == \"LogicalDisk\" and CounterName == \"% Free Space\"\n| where InstanceName !in (\"_Total\", \"HarddiskVolume1\")\n| summarize AvgFreePercent = avg(CounterValue) by Computer, InstanceName, bin(TimeGenerated, 5m)\n| where AvgFreePercent < ', parameters('diskWarningThresholdPercent'), '\n| project Computer, InstanceName, AvgFreePercent, TimeGenerated')]",
+              "timeAggregation": "Count",
+              "operator": "GreaterThan",
+              "threshold": 0,
+              "dimensions": [
+                {
+                  "name": "Computer",
+                  "operator": "Include",
+                  "values": ["*"]
+                },
+                {
+                  "name": "InstanceName",
+                  "operator": "Include",
+                  "values": ["*"]
+                }
+              ],
+              "failingPeriods": {
+                "numberOfEvaluationPeriods": 2,
+                "minFailingPeriodsToAlert": 2
+              }
+            }
+          ]
+        },
+        "autoMitigate": true,
+        "actions": {
+          "actionGroups": ["[variables('actionGroupId')]"]
+        }
+      }
+    },
+
+    {
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2023-03-15-preview",
+      "name": "alrt-disk-critical-il-01",
+      "location": "[parameters('location')]",
+      "dependsOn": ["[variables('actionGroupId')]"],
+      "tags": {
+        "project": "contoso-monitor-poc",
+        "scope": "performance",
+        "scomEquivalent": "LogicalDisk % Free Space",
+        "severity": "critical",
+        "createdBy": "arm-template"
+      },
+      "properties": {
+        "displayName": "[concat('Contoso PoC — Low Disk Space Critical (<', parameters('diskCriticalThresholdPercent'), '% Free)')]",
+        "description": "[concat('Free disk space below ', parameters('diskCriticalThresholdPercent'), '%.')]",
+        "severity": 1,
+        "enabled": true,
+        "evaluationFrequency": "PT5M",
+        "windowSize": "PT5M",
+        "scopes": ["[variables('workspaceResourceId')]"],
+        "criteria": {
+          "allOf": [
+            {
+              "query": "[concat('Perf\n| where ObjectName == \"LogicalDisk\" and CounterName == \"% Free Space\"\n| where InstanceName !in (\"_Total\", \"HarddiskVolume1\")\n| summarize AvgFreePercent = avg(CounterValue) by Computer, InstanceName, bin(TimeGenerated, 5m)\n| where AvgFreePercent < ', parameters('diskCriticalThresholdPercent'), '\n| project Computer, InstanceName, AvgFreePercent, TimeGenerated')]",
+              "timeAggregation": "Count",
+              "operator": "GreaterThan",
+              "threshold": 0,
+              "dimensions": [
+                {
+                  "name": "Computer",
+                  "operator": "Include",
+                  "values": ["*"]
+                },
+                {
+                  "name": "InstanceName",
+                  "operator": "Include",
+                  "values": ["*"]
+                }
+              ],
+              "failingPeriods": {
+                "numberOfEvaluationPeriods": 1,
+                "minFailingPeriodsToAlert": 1
+              }
+            }
+          ]
+        },
+        "autoMitigate": true,
+        "actions": {
+          "actionGroups": ["[variables('actionGroupId')]"]
+        }
+      }
+    },
+
+    {
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2023-03-15-preview",
+      "name": "alrt-service-il-01",
+      "location": "[parameters('location')]",
+      "dependsOn": ["[variables('actionGroupId')]"],
+      "tags": {
+        "project": "contoso-monitor-poc",
+        "scope": "services",
+        "scomEquivalent": "Windows Service Monitor",
+        "severity": "critical",
+        "createdBy": "arm-template"
+      },
+      "properties": {
+        "displayName": "Contoso PoC — Critical Windows Service Stopped",
+        "description": "Fires when a critical Windows service (DHCP, SCCM, DNS, W32Time, NTDS) enters stopped state.",
+        "severity": 1,
+        "enabled": true,
+        "evaluationFrequency": "PT5M",
+        "windowSize": "PT5M",
+        "scopes": ["[variables('workspaceResourceId')]"],
+        "criteria": {
+          "allOf": [
+            {
+              "query": "Event\n| where EventLog == \"System\" and Source == \"Service Control Manager\" and EventID == 7036\n| parse EventData with * '<Data Name=\"param1\">' ServiceName '</Data><Data Name=\"param2\">' ServiceState '</Data>' *\n| where ServiceState has \"stopped\"\n| where ServiceName in~ (\"DHCP Server\", \"CcmExec\", \"SMS_EXECUTIVE\", \"W32Time\", \"DNS\", \"NTDS\")\n| project TimeGenerated, Computer, ServiceName, ServiceState",
+              "timeAggregation": "Count",
+              "operator": "GreaterThan",
+              "threshold": 0,
+              "dimensions": [
+                {
+                  "name": "Computer",
+                  "operator": "Include",
+                  "values": ["*"]
+                }
+              ],
+              "failingPeriods": {
+                "numberOfEvaluationPeriods": 1,
+                "minFailingPeriodsToAlert": 1
+              }
+            }
+          ]
+        },
+        "autoMitigate": true,
+        "actions": {
+          "actionGroups": ["[variables('actionGroupId')]"]
+        }
+      }
+    },
+
+    {
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2023-03-15-preview",
+      "name": "alrt-privgroup-il-01",
+      "location": "[parameters('location')]",
+      "dependsOn": ["[variables('actionGroupId')]"],
+      "tags": {
+        "project": "contoso-monitor-poc",
+        "scope": "security",
+        "scomEquivalent": "Privileged Group Monitoring Rule",
+        "severity": "critical",
+        "createdBy": "arm-template"
+      },
+      "properties": {
+        "displayName": "Contoso PoC — Privileged Group Membership Change",
+        "description": "Fires when a member is added/removed from Domain Admins, Enterprise Admins, Schema Admins, or Schedule Server Maintenance.",
+        "severity": 1,
+        "enabled": true,
+        "evaluationFrequency": "PT5M",
+        "windowSize": "PT5M",
+        "scopes": ["[variables('workspaceResourceId')]"],
+        "criteria": {
+          "allOf": [
+            {
+              "query": "SecurityEvent\n| where EventID in (4728, 4729, 4732, 4733, 4756, 4757, 4735, 4737, 4755)\n| where TargetUserName in~ (\"Domain Admins\", \"Enterprise Admins\", \"Schema Admins\", \"Schedule Server Maintenance\")\n| project TimeGenerated, Computer, EventID, Activity, Account, TargetGroup = TargetUserName, MemberName, SubjectUserName",
+              "timeAggregation": "Count",
+              "operator": "GreaterThan",
+              "threshold": 0,
+              "dimensions": [
+                {
+                  "name": "Computer",
+                  "operator": "Include",
+                  "values": ["*"]
+                }
+              ],
+              "failingPeriods": {
+                "numberOfEvaluationPeriods": 1,
+                "minFailingPeriodsToAlert": 1
+              }
+            }
+          ]
+        },
+        "skipQueryValidation": true,
+        "autoMitigate": false,
+        "actions": {
+          "actionGroups": ["[variables('actionGroupId')]"]
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "actionGroupId": {
+      "type": "string",
+      "value": "[variables('actionGroupId')]"
+    },
+    "workspaceIdReferenced": {
+      "type": "string",
+      "value": "[variables('workspaceResourceId')]"
+    },
+    "alertRulesDeployed": {
+      "type": "array",
+      "value": [
+        "alrt-heartbeat-il-01",
+        "alrt-cpu-warning-il-01",
+        "alrt-cpu-critical-il-01",
+        "alrt-memory-warning-il-01",
+        "alrt-memory-critical-il-01",
+        "alrt-disk-warning-il-01",
+        "alrt-disk-critical-il-01",
+        "alrt-service-il-01",
+        "alrt-privgroup-il-01"
+      ]
+    }
+  }
+}

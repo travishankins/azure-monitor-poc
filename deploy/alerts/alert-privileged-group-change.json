@@ -1,0 +1,103 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "Contoso PoC — Alert: Privileged Group Membership Change. Detects additions/removals to Domain Admins, Enterprise Admins, Schema Admins, and custom groups."
+  },
+  "parameters": {
+    "workspaceName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Log Analytics workspace."
+      }
+    },
+    "workspaceResourceGroup": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource group containing the Log Analytics workspace."
+      }
+    },
+    "actionGroupName": {
+      "type": "string",
+      "defaultValue": "ag-contoso-poc"
+    },
+    "privilegedGroups": {
+      "type": "array",
+      "defaultValue": [
+        "Domain Admins",
+        "Enterprise Admins",
+        "Schema Admins",
+        "Schedule Server Maintenance"
+      ],
+      "metadata": {
+        "description": "List of privileged groups to monitor for membership changes."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    }
+  },
+  "variables": {
+    "alertName": "alert-contoso-privileged-group-change",
+    "workspaceResourceId": "[resourceId(parameters('workspaceResourceGroup'), 'Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]",
+    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', parameters('actionGroupName'))]",
+    "groupList": "[replace(replace(string(parameters('privilegedGroups')), '[', ''), ']', '')]",
+    "query": "[concat('SecurityEvent\n| where EventID in (4728, 4729, 4732, 4733, 4756, 4757, 4735, 4737, 4755)\n| where TargetUserName in~ (', variables('groupList'), ')\n| project\n    TimeGenerated,\n    Computer,\n    EventID,\n    Activity,\n    Account,\n    TargetGroup = TargetUserName,\n    MemberName,\n    SubjectUserName')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2023-03-15-preview",
+      "name": "[variables('alertName')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "project": "contoso-monitor-poc",
+        "scope": "security",
+        "scomEquivalent": "Privileged Group Monitoring Rule",
+        "severity": "critical",
+        "createdBy": "arm-template"
+      },
+      "properties": {
+        "displayName": "Contoso PoC — Privileged Group Membership Change",
+        "description": "Fires when a member is added to or removed from a privileged security group (Domain Admins, Enterprise Admins, Schema Admins, Schedule Server Maintenance). SCOM equivalent: Custom event-based rules for Security event log monitoring.",
+        "severity": 1,
+        "enabled": true,
+        "evaluationFrequency": "PT5M",
+        "windowSize": "PT5M",
+        "scopes": ["[variables('workspaceResourceId')]"],
+        "criteria": {
+          "allOf": [
+            {
+              "query": "[variables('query')]",
+              "timeAggregation": "Count",
+              "operator": "GreaterThan",
+              "threshold": 0,
+              "dimensions": [
+                {
+                  "name": "Computer",
+                  "operator": "Include",
+                  "values": ["*"]
+                }
+              ],
+              "failingPeriods": {
+                "numberOfEvaluationPeriods": 1,
+                "minFailingPeriodsToAlert": 1
+              }
+            }
+          ]
+        },
+        "autoMitigate": false,
+        "actions": {
+          "actionGroups": ["[variables('actionGroupId')]"]
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "alertRuleId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Insights/scheduledQueryRules', variables('alertName'))]"
+    }
+  }
+}

@@ -1,0 +1,280 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Server Health Overview\n---\nThis workbook provides a consolidated view of server health across your Azure Arc-enabled and Azure VM estate. It replicates the SCOM \"State\" dashboard — showing availability, CPU, memory, disk, and network at a glance.\n\n**Data Sources:** Heartbeat, Perf (via AMA + DCRs)"
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "a2947a42-89c1-4b10-8c31-0e9e70e0c536",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "label": "Time Range",
+            "type": 4,
+            "isRequired": true,
+            "typeSettings": {
+              "selectableValues": [
+                { "durationMs": 3600000, "createdTime": "2024-01-01T00:00:00Z", "isInitialTime": false, "grain": 1, "useDashboardTimeRange": false },
+                { "durationMs": 14400000 },
+                { "durationMs": 43200000 },
+                { "durationMs": 86400000, "isInitialTime": true },
+                { "durationMs": 172800000 },
+                { "durationMs": 604800000 },
+                { "durationMs": 2592000000 }
+              ],
+              "allowCustom": true
+            },
+            "value": {
+              "durationMs": 86400000
+            }
+          },
+          {
+            "id": "b3f58a52-7c22-4d11-9e42-1f0e80f1d637",
+            "version": "KqlParameterItem/1.0",
+            "name": "Computer",
+            "label": "Server",
+            "type": 2,
+            "isRequired": false,
+            "multiSelect": true,
+            "quote": "'",
+            "delimiter": ",",
+            "query": "Heartbeat\n| distinct Computer\n| sort by Computer asc",
+            "typeSettings": {
+              "additionalResourceOptions": ["value::all"],
+              "showDefault": false
+            },
+            "defaultValue": "value::all",
+            "queryType": 0,
+            "resourceType": "microsoft.operationalinsights/workspaces"
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Server Availability"
+      },
+      "name": "section-availability"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Heartbeat\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize LastHeartbeat = max(TimeGenerated) by Computer, OSType, ResourceGroup\n| extend Status = iff(LastHeartbeat < ago(5m), '🔴 Offline', '🟢 Online')\n| extend MinutesSinceHeartbeat = datetime_diff('minute', now(), LastHeartbeat)\n| project Computer, Status, ['Last Heartbeat'] = LastHeartbeat, ['Minutes Ago'] = MinutesSinceHeartbeat, ['OS Type'] = OSType, ['Resource Group'] = ResourceGroup\n| sort by Status asc, Computer asc",
+        "size": 0,
+        "title": "Server Status — Heartbeat Based",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "Status",
+              "formatter": 1
+            },
+            {
+              "columnMatch": "Minutes Ago",
+              "formatter": 8,
+              "formatOptions": {
+                "palette": "greenRed"
+              }
+            }
+          ]
+        }
+      },
+      "name": "server-status-table"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Heartbeat\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize LastHeartbeat = max(TimeGenerated) by Computer\n| extend Status = iff(LastHeartbeat < ago(5m), 'Offline', 'Online')\n| summarize Count = count() by Status",
+        "size": 3,
+        "title": "Availability Summary",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "piechart",
+        "chartSettings": {
+          "seriesLabelSettings": [
+            { "seriesName": "Online", "color": "green" },
+            { "seriesName": "Offline", "color": "red" }
+          ]
+        }
+      },
+      "name": "availability-pie"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Performance Summary — Current State"
+      },
+      "name": "section-perf-summary"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let cpu = Perf\n| where ObjectName == 'Processor' and CounterName == '% Processor Time' and InstanceName == '_Total'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgCPU = round(avg(CounterValue), 1), MaxCPU = round(max(CounterValue), 1) by Computer;\nlet mem = Perf\n| where ObjectName == 'Memory' and CounterName == 'Available MBytes'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgAvailMB = round(avg(CounterValue), 0) by Computer;\nlet disk = Perf\n| where ObjectName == 'LogicalDisk' and CounterName == '% Free Space'\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize MinFree = round(min(CounterValue), 1) by Computer;\ncpu\n| join kind=leftouter mem on Computer\n| join kind=leftouter disk on Computer\n| project Computer, ['Avg CPU %'] = AvgCPU, ['Max CPU %'] = MaxCPU, ['Avail Memory MB'] = AvgAvailMB, ['Min Disk Free %'] = MinFree\n| sort by ['Avg CPU %'] desc",
+        "size": 0,
+        "title": "Server Performance At-a-Glance (Selected Time Range)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "Avg CPU %",
+              "formatter": 8,
+              "formatOptions": {
+                "palette": "greenRed"
+              }
+            },
+            {
+              "columnMatch": "Avail Memory MB",
+              "formatter": 8,
+              "formatOptions": {
+                "palette": "redGreen"
+              }
+            },
+            {
+              "columnMatch": "Min Disk Free %",
+              "formatter": 8,
+              "formatOptions": {
+                "palette": "redGreen"
+              }
+            }
+          ]
+        }
+      },
+      "name": "perf-summary-table"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## CPU Usage Trend"
+      },
+      "name": "section-cpu"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where ObjectName == 'Processor' and CounterName == '% Processor Time' and InstanceName == '_Total'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgCPU = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
+        "size": 0,
+        "title": "CPU % Processor Time by Server",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "name": "cpu-timechart"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Memory Usage Trend"
+      },
+      "name": "section-memory"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where ObjectName == 'Memory' and CounterName == 'Available MBytes'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgAvailMB = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
+        "size": 0,
+        "title": "Available Memory (MB) by Server",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "name": "memory-timechart"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Disk Free Space"
+      },
+      "name": "section-disk"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName == '% Free Space'\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgFreePercent = round(avg(CounterValue), 1) by Computer, InstanceName\n| sort by AvgFreePercent asc",
+        "size": 0,
+        "title": "Disk Free Space % by Volume",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "AvgFreePercent",
+              "formatter": 8,
+              "formatOptions": {
+                "palette": "redGreen"
+              }
+            }
+          ]
+        }
+      },
+      "name": "disk-free-table"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName == '% Free Space'\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgFreePercent = round(avg(CounterValue), 1) by Computer, InstanceName\n| sort by AvgFreePercent asc\n| render barchart",
+        "size": 0,
+        "title": "Disk Free Space % — Visual",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "barchart"
+      },
+      "name": "disk-free-barchart"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Network Throughput"
+      },
+      "name": "section-network"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where ObjectName == 'Network Interface' and CounterName == 'Bytes Total/sec'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgBytesPerSec = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| extend AvgMbps = round(AvgBytesPerSec * 8 / 1000000, 2)\n| project TimeGenerated, Computer, AvgMbps\n| render timechart",
+        "size": 0,
+        "title": "Network Throughput (Mbps) by Server",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "name": "network-timechart"
+    }
+  ],
+  "fallbackResourceIds": [],
+  "fromTemplateId": "custom-contoso-server-health-overview",
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

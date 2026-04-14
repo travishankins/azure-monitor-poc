@@ -1,0 +1,77 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "Contoso PoC — Action Group with email notifications. Extend with SMS, webhook, or ITSM actions as needed."
+  },
+  "parameters": {
+    "actionGroupName": {
+      "type": "string",
+      "defaultValue": "ag-contoso-poc",
+      "metadata": {
+        "description": "Name of the Action Group."
+      }
+    },
+    "actionGroupShortName": {
+      "type": "string",
+      "defaultValue": "ContosoPoC",
+      "maxLength": 12,
+      "metadata": {
+        "description": "Short name for the Action Group (max 12 chars)."
+      }
+    },
+    "notificationEmail": {
+      "type": "string",
+      "metadata": {
+        "description": "Primary notification email address."
+      }
+    },
+    "notificationEmailOps": {
+      "type": "string",
+      "metadata": {
+        "description": "Ops team notification email address."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "Global",
+      "metadata": {
+        "description": "Action Groups use Global location."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Insights/actionGroups",
+      "apiVersion": "2023-01-01",
+      "name": "[parameters('actionGroupName')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "project": "contoso-monitor-poc",
+        "createdBy": "arm-template"
+      },
+      "properties": {
+        "groupShortName": "[parameters('actionGroupShortName')]",
+        "enabled": true,
+        "emailReceivers": [
+          {
+            "name": "Contoso-Admin",
+            "emailAddress": "[parameters('notificationEmail')]",
+            "useCommonAlertSchema": true
+          },
+          {
+            "name": "Contoso-Ops",
+            "emailAddress": "[parameters('notificationEmailOps')]",
+            "useCommonAlertSchema": true
+          }
+        ]
+      }
+    }
+  ],
+  "outputs": {
+    "actionGroupId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Insights/actionGroups', parameters('actionGroupName'))]"
+    }
+  }
+}

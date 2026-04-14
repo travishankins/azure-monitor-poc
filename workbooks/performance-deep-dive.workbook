@@ -1,0 +1,323 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Performance Deep Dive\n---\nDetailed performance analysis for CPU, memory, disk I/O, and processor queue length. Use this workbook to investigate performance issues flagged by alerts or to establish baselines.\n\n**Data Sources:** Perf (via AMA + DCR: dcr-contoso-perf-counters)"
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "c1d47a42-89c1-4b10-8c31-0e9e70e0c001",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "label": "Time Range",
+            "type": 4,
+            "isRequired": true,
+            "typeSettings": {
+              "selectableValues": [
+                { "durationMs": 3600000 },
+                { "durationMs": 14400000 },
+                { "durationMs": 43200000 },
+                { "durationMs": 86400000, "isInitialTime": true },
+                { "durationMs": 172800000 },
+                { "durationMs": 604800000 },
+                { "durationMs": 2592000000 }
+              ],
+              "allowCustom": true
+            },
+            "value": {
+              "durationMs": 86400000
+            }
+          },
+          {
+            "id": "d2e58a52-7c22-4d11-9e42-1f0e80f1d002",
+            "version": "KqlParameterItem/1.0",
+            "name": "Computer",
+            "label": "Server",
+            "type": 2,
+            "isRequired": false,
+            "multiSelect": true,
+            "quote": "'",
+            "delimiter": ",",
+            "query": "Heartbeat\n| distinct Computer\n| sort by Computer asc",
+            "typeSettings": {
+              "additionalResourceOptions": ["value::all"],
+              "showDefault": false
+            },
+            "defaultValue": "value::all",
+            "queryType": 0,
+            "resourceType": "microsoft.operationalinsights/workspaces"
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## CPU Analysis"
+      },
+      "name": "section-cpu"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where ObjectName == 'Processor' and CounterName == '% Processor Time' and InstanceName == '_Total'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize\n    AvgCPU = round(avg(CounterValue), 1),\n    P50 = round(percentile(CounterValue, 50), 1),\n    P90 = round(percentile(CounterValue, 90), 1),\n    P95 = round(percentile(CounterValue, 95), 1),\n    MaxCPU = round(max(CounterValue), 1),\n    Samples = count()\n    by Computer\n| sort by AvgCPU desc",
+        "size": 0,
+        "title": "CPU Utilization Statistics",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "AvgCPU|P90|P95|MaxCPU",
+              "formatter": 8,
+              "formatOptions": {
+                "palette": "greenRed"
+              }
+            }
+          ]
+        }
+      },
+      "name": "cpu-stats"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where ObjectName == 'Processor' and CounterName == '% Processor Time' and InstanceName == '_Total'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgCPU = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
+        "size": 0,
+        "title": "CPU % Processor Time — Trend",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "name": "cpu-trend"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where ObjectName == 'System' and CounterName == 'Processor Queue Length'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgQueueLen = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
+        "size": 0,
+        "title": "Processor Queue Length — Trend (Sustained > 2 indicates CPU bottleneck)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "name": "cpu-queue-trend"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Memory Analysis"
+      },
+      "name": "section-memory"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where ObjectName == 'Memory' and CounterName == 'Available MBytes'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize\n    AvgAvailMB = round(avg(CounterValue), 0),\n    MinAvailMB = round(min(CounterValue), 0),\n    P5 = round(percentile(CounterValue, 5), 0),\n    MaxAvailMB = round(max(CounterValue), 0)\n    by Computer\n| sort by MinAvailMB asc",
+        "size": 0,
+        "title": "Memory Availability Statistics (MB)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "MinAvailMB|P5",
+              "formatter": 8,
+              "formatOptions": {
+                "palette": "redGreen"
+              }
+            }
+          ]
+        }
+      },
+      "name": "memory-stats"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where ObjectName == 'Memory' and CounterName == 'Available MBytes'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgAvailMB = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
+        "size": 0,
+        "title": "Available Memory (MB) — Trend",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "name": "memory-trend"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where ObjectName == 'Memory' and CounterName == '% Committed Bytes In Use'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgCommitted = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
+        "size": 0,
+        "title": "% Committed Bytes In Use — Trend",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "name": "memory-committed-trend"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where ObjectName == 'Memory' and CounterName == 'Pages/sec'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgPagesPerSec = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
+        "size": 0,
+        "title": "Memory Pages/sec — Trend (Sustained high values indicate memory pressure)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "name": "memory-pages-trend"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Disk I/O Analysis"
+      },
+      "name": "section-disk"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName == '% Free Space'\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgFree = round(avg(CounterValue), 1), MinFree = round(min(CounterValue), 1) by Computer, InstanceName\n| sort by MinFree asc",
+        "size": 0,
+        "title": "Disk Free Space % by Volume",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "AvgFree|MinFree",
+              "formatter": 8,
+              "formatOptions": {
+                "palette": "redGreen"
+              }
+            }
+          ]
+        }
+      },
+      "name": "disk-space-table"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName in ('Avg. Disk sec/Read', 'Avg. Disk sec/Write')\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgLatencyMs = round(avg(CounterValue) * 1000, 2) by Computer, InstanceName, CounterName\n| sort by AvgLatencyMs desc",
+        "size": 0,
+        "title": "Disk Latency (ms) — Avg Read/Write per Volume (>25ms = warning, >50ms = critical)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "AvgLatencyMs",
+              "formatter": 8,
+              "formatOptions": {
+                "palette": "greenRed"
+              }
+            }
+          ]
+        }
+      },
+      "name": "disk-latency-table"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName == 'Avg. Disk Queue Length'\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgQueueLen = avg(CounterValue) by Computer, InstanceName, bin(TimeGenerated, 5m)\n| render timechart",
+        "size": 0,
+        "title": "Disk Queue Length — Trend (Sustained > 2 indicates disk bottleneck)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "name": "disk-queue-trend"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName in ('Disk Reads/sec', 'Disk Writes/sec')\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgIOPS = round(avg(CounterValue), 1) by Computer, InstanceName, CounterName, bin(TimeGenerated, 5m)\n| render timechart",
+        "size": 0,
+        "title": "Disk IOPS (Reads/sec & Writes/sec) — Trend",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "name": "disk-iops-trend"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Network Analysis"
+      },
+      "name": "section-network"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where ObjectName == 'Network Interface' and CounterName in ('Bytes Sent/sec', 'Bytes Received/sec')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgBytesPerSec = avg(CounterValue) by Computer, CounterName, bin(TimeGenerated, 5m)\n| extend Mbps = round(AvgBytesPerSec * 8 / 1000000, 2)\n| project TimeGenerated, Series = strcat(Computer, ' - ', CounterName), Mbps\n| render timechart",
+        "size": 0,
+        "title": "Network Sent/Received (Mbps) — Trend",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "name": "network-trend"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Perf\n| where ObjectName == 'Network Interface' and CounterName == 'Output Queue Length'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgQueueLen = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
+        "size": 0,
+        "title": "Network Output Queue Length — Trend (> 0 sustained indicates NIC saturation)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "name": "network-queue-trend"
+    }
+  ],
+  "fallbackResourceIds": [],
+  "fromTemplateId": "custom-contoso-performance-deep-dive",
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

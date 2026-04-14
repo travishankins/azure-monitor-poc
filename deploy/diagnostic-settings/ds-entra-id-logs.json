@@ -1,0 +1,106 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "Contoso PoC — Entra ID (Azure AD) diagnostic setting. Sends sign-in logs, audit logs, and risky user/sign-in events to a Log Analytics workspace. This covers: high-risk sign-ins, MFA failures, admin consent grants, app registrations, role assignments, and suspicious activity. NOTE: Requires Global Administrator or Security Administrator to configure via Portal > Entra ID > Diagnostic settings."
+  },
+  "parameters": {
+    "workspaceResourceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Full resource ID of the Log Analytics workspace."
+      }
+    },
+    "settingName": {
+      "type": "string",
+      "defaultValue": "ds-contoso-entra-id-logs",
+      "metadata": {
+        "description": "Name for the diagnostic setting."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.AAD/diagnosticSettings",
+      "apiVersion": "2017-04-01",
+      "name": "[parameters('settingName')]",
+      "properties": {
+        "workspaceId": "[parameters('workspaceResourceId')]",
+        "logs": [
+          {
+            "category": "AuditLogs",
+            "enabled": true,
+            "retentionPolicy": {
+              "enabled": false,
+              "days": 0
+            }
+          },
+          {
+            "category": "SignInLogs",
+            "enabled": true,
+            "retentionPolicy": {
+              "enabled": false,
+              "days": 0
+            }
+          },
+          {
+            "category": "NonInteractiveUserSignInLogs",
+            "enabled": true,
+            "retentionPolicy": {
+              "enabled": false,
+              "days": 0
+            }
+          },
+          {
+            "category": "ServicePrincipalSignInLogs",
+            "enabled": true,
+            "retentionPolicy": {
+              "enabled": false,
+              "days": 0
+            }
+          },
+          {
+            "category": "ManagedIdentitySignInLogs",
+            "enabled": true,
+            "retentionPolicy": {
+              "enabled": false,
+              "days": 0
+            }
+          },
+          {
+            "category": "RiskyUsers",
+            "enabled": true,
+            "retentionPolicy": {
+              "enabled": false,
+              "days": 0
+            }
+          },
+          {
+            "category": "UserRiskEvents",
+            "enabled": true,
+            "retentionPolicy": {
+              "enabled": false,
+              "days": 0
+            }
+          },
+          {
+            "category": "RiskyServicePrincipals",
+            "enabled": true,
+            "retentionPolicy": {
+              "enabled": false,
+              "days": 0
+            }
+          },
+          {
+            "category": "ServicePrincipalRiskEvents",
+            "enabled": true,
+            "retentionPolicy": {
+              "enabled": false,
+              "days": 0
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

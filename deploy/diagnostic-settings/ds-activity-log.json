@@ -1,0 +1,66 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "Contoso PoC — Azure Activity Log diagnostic setting. Sends subscription-level activity logs (Administrative, Security, Policy, Autoscale, Recommendation, Alert) to a Log Analytics workspace. This captures: resource creation/deletion, RBAC changes, policy compliance, and all management-plane operations."
+  },
+  "parameters": {
+    "workspaceResourceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Full resource ID of the Log Analytics workspace (e.g. /subscriptions/.../resourceGroups/.../providers/Microsoft.OperationalInsights/workspaces/...)"
+      }
+    },
+    "settingName": {
+      "type": "string",
+      "defaultValue": "ds-contoso-activity-log",
+      "metadata": {
+        "description": "Name for the diagnostic setting."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Insights/diagnosticSettings",
+      "apiVersion": "2021-05-01-preview",
+      "name": "[parameters('settingName')]",
+      "properties": {
+        "workspaceId": "[parameters('workspaceResourceId')]",
+        "logs": [
+          {
+            "category": "Administrative",
+            "enabled": true
+          },
+          {
+            "category": "Security",
+            "enabled": true
+          },
+          {
+            "category": "ServiceHealth",
+            "enabled": true
+          },
+          {
+            "category": "Alert",
+            "enabled": true
+          },
+          {
+            "category": "Recommendation",
+            "enabled": true
+          },
+          {
+            "category": "Policy",
+            "enabled": true
+          },
+          {
+            "category": "Autoscale",
+            "enabled": true
+          },
+          {
+            "category": "ResourceHealth",
+            "enabled": true
+          }
+        ]
+      }
+    }
+  ]
+}

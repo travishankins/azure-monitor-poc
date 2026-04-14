@@ -1,0 +1,99 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "Contoso PoC — Data Collection Rule: Windows Event Logs. Collects Application, System (Warning+Error+Critical), and Service Control Manager events."
+  },
+  "parameters": {
+    "Data collection rule name": {
+      "type": "string",
+      "defaultValue": "dcr-contoso-windows-events",
+      "metadata": {
+        "description": "Enter the Data collection rule (DCR) name."
+      }
+    },
+    "Workspace Resource Id": {
+      "type": "string",
+      "metadata": {
+        "description": "Enter the Workspace Resource ID of the Log Analytics Workspace to send data to."
+      }
+    }
+  },
+  "variables": {
+    "workspaceName": "[split(parameters('Workspace Resource Id'),'/')[8]]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Insights/dataCollectionRules",
+      "apiVersion": "2022-06-01",
+      "name": "[parameters('Data collection rule name')]",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "project": "contoso-monitor-poc",
+        "scope": "events",
+        "createdBy": "arm-template"
+      },
+      "kind": "Windows",
+      "properties": {
+        "description": "Collects Windows Application/System event logs (Warning, Error, Critical) and Service Control Manager events for service monitoring.",
+        "dataSources": {
+          "windowsEventLogs": [
+            {
+              "name": "applicationErrors",
+              "streams": ["Microsoft-Event"],
+              "xPathQueries": [
+                "Application!*[System[(Level=1 or Level=2 or Level=3)]]"
+              ]
+            },
+            {
+              "name": "systemErrors",
+              "streams": ["Microsoft-Event"],
+              "xPathQueries": [
+                "System!*[System[(Level=1 or Level=2 or Level=3)]]"
+              ]
+            },
+            {
+              "name": "serviceControlManager",
+              "streams": ["Microsoft-Event"],
+              "xPathQueries": [
+                "System!*[System[Provider[@Name='Service Control Manager'] and (EventID=7036 or EventID=7040 or EventID=7045 or EventID=7034)]]"
+              ]
+            },
+            {
+              "name": "dhcpServerEvents",
+              "streams": ["Microsoft-Event"],
+              "xPathQueries": [
+                "System!*[System[Provider[@Name='DHCPServer']]]",
+                "Microsoft-Windows-DHCP-Server/Operational!*"
+              ]
+            }
+          ]
+        },
+        "destinations": {
+          "logAnalytics": [
+            {
+              "workspaceResourceId": "[parameters('Workspace Resource Id')]",
+              "name": "[variables('workspaceName')]"
+            }
+          ]
+        },
+        "dataFlows": [
+          {
+            "streams": ["Microsoft-Event"],
+            "destinations": ["[variables('workspaceName')]"]
+          }
+        ]
+      }
+    }
+  ],
+  "outputs": {
+    "dcrId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Insights/dataCollectionRules', parameters('Data collection rule name'))]"
+    },
+    "dcrName": {
+      "type": "string",
+      "value": "[parameters('Data collection rule name')]"
+    }
+  }
+}

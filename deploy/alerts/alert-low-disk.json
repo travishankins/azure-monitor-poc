@@ -1,0 +1,165 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "Contoso PoC — Alert: Low Disk Space. Creates warning (<15% free) and critical (<10% free) alert rules."
+  },
+  "parameters": {
+    "workspaceName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Log Analytics workspace."
+      }
+    },
+    "workspaceResourceGroup": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource group containing the Log Analytics workspace."
+      }
+    },
+    "actionGroupName": {
+      "type": "string",
+      "defaultValue": "ag-contoso-poc"
+    },
+    "diskWarningThresholdPercent": {
+      "type": "int",
+      "defaultValue": 15,
+      "metadata": {
+        "description": "Free disk % below which a warning is raised."
+      }
+    },
+    "diskCriticalThresholdPercent": {
+      "type": "int",
+      "defaultValue": 10,
+      "metadata": {
+        "description": "Free disk % below which a critical alert is raised."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    }
+  },
+  "variables": {
+    "workspaceResourceId": "[resourceId(parameters('workspaceResourceGroup'), 'Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]",
+    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', parameters('actionGroupName'))]",
+    "warningQuery": "[concat('Perf\n| where ObjectName == \"LogicalDisk\" and CounterName == \"% Free Space\"\n| where InstanceName !in (\"_Total\", \"HarddiskVolume1\")\n| summarize AvgFreePercent = avg(CounterValue) by Computer, InstanceName, bin(TimeGenerated, 5m)\n| where AvgFreePercent < ', parameters('diskWarningThresholdPercent'), '\n| project Computer, InstanceName, AvgFreePercent, TimeGenerated')]",
+    "criticalQuery": "[concat('Perf\n| where ObjectName == \"LogicalDisk\" and CounterName == \"% Free Space\"\n| where InstanceName !in (\"_Total\", \"HarddiskVolume1\")\n| summarize AvgFreePercent = avg(CounterValue) by Computer, InstanceName, bin(TimeGenerated, 5m)\n| where AvgFreePercent < ', parameters('diskCriticalThresholdPercent'), '\n| project Computer, InstanceName, AvgFreePercent, TimeGenerated')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2023-03-15-preview",
+      "name": "alert-contoso-disk-warning",
+      "location": "[parameters('location')]",
+      "tags": {
+        "project": "contoso-monitor-poc",
+        "scope": "performance",
+        "scomEquivalent": "LogicalDisk\\% Free Space",
+        "severity": "warning",
+        "createdBy": "arm-template"
+      },
+      "properties": {
+        "displayName": "[concat('Contoso PoC — Low Disk Space Warning (<', parameters('diskWarningThresholdPercent'), '% Free)')]",
+        "description": "[concat('Fires when average free disk space drops below ', parameters('diskWarningThresholdPercent'), '% on any volume. SCOM equivalent: Windows Server Operating System / Logical Disk Free Space threshold.')]",
+        "severity": 2,
+        "enabled": true,
+        "evaluationFrequency": "PT5M",
+        "windowSize": "PT10M",
+        "scopes": ["[variables('workspaceResourceId')]"],
+        "criteria": {
+          "allOf": [
+            {
+              "query": "[variables('warningQuery')]",
+              "timeAggregation": "Count",
+              "operator": "GreaterThan",
+              "threshold": 0,
+              "dimensions": [
+                {
+                  "name": "Computer",
+                  "operator": "Include",
+                  "values": ["*"]
+                },
+                {
+                  "name": "InstanceName",
+                  "operator": "Include",
+                  "values": ["*"]
+                }
+              ],
+              "failingPeriods": {
+                "numberOfEvaluationPeriods": 2,
+                "minFailingPeriodsToAlert": 2
+              }
+            }
+          ]
+        },
+        "autoMitigate": true,
+        "actions": {
+          "actionGroups": ["[variables('actionGroupId')]"]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2023-03-15-preview",
+      "name": "alert-contoso-disk-critical",
+      "location": "[parameters('location')]",
+      "tags": {
+        "project": "contoso-monitor-poc",
+        "scope": "performance",
+        "scomEquivalent": "LogicalDisk\\% Free Space",
+        "severity": "critical",
+        "createdBy": "arm-template"
+      },
+      "properties": {
+        "displayName": "[concat('Contoso PoC — Low Disk Space Critical (<', parameters('diskCriticalThresholdPercent'), '% Free)')]",
+        "description": "[concat('Fires when average free disk space drops below ', parameters('diskCriticalThresholdPercent'), '% on any volume. SCOM equivalent: Windows Server Operating System / Logical Disk Free Space critical threshold.')]",
+        "severity": 1,
+        "enabled": true,
+        "evaluationFrequency": "PT5M",
+        "windowSize": "PT5M",
+        "scopes": ["[variables('workspaceResourceId')]"],
+        "criteria": {
+          "allOf": [
+            {
+              "query": "[variables('criticalQuery')]",
+              "timeAggregation": "Count",
+              "operator": "GreaterThan",
+              "threshold": 0,
+              "dimensions": [
+                {
+                  "name": "Computer",
+                  "operator": "Include",
+                  "values": ["*"]
+                },
+                {
+                  "name": "InstanceName",
+                  "operator": "Include",
+                  "values": ["*"]
+                }
+              ],
+              "failingPeriods": {
+                "numberOfEvaluationPeriods": 1,
+                "minFailingPeriodsToAlert": 1
+              }
+            }
+          ]
+        },
+        "autoMitigate": true,
+        "actions": {
+          "actionGroups": ["[variables('actionGroupId')]"]
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "warningAlertId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Insights/scheduledQueryRules', 'alert-contoso-disk-warning')]"
+    },
+    "criticalAlertId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Insights/scheduledQueryRules', 'alert-contoso-disk-critical')]"
+    }
+  }
+}

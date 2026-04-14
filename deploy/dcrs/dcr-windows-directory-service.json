@@ -1,0 +1,64 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "Data collection rule name": {
+			"type": "string",
+            "metadata": {
+                "description": "Enter the Data collection rule (DCR) name."
+
+            }
+		},
+        "Workspace Resource Id":{
+            "type": "string",
+            "metadata": {
+                "description": "Enter the Workspace Resource ID of the Log Analytics Workspace to send data to."
+            }
+        }
+    },
+    "variables": {
+        "workspaceName": "[split(parameters('Workspace Resource Id'),'/')[8]]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Insights/dataCollectionRules",
+            "apiVersion": "2019-11-01-preview",
+            "name": "[parameters('Data collection rule name')]",
+            "location": "[resourceGroup().location]",
+            "kind": "Windows",
+            "properties": {
+                "dataSources": {
+                    "windowsEventLogs": [
+                        {
+                            "streams": [
+                                "Microsoft-Event"
+                            ],
+                            "xPathQueries": [
+                                "Directory Service!*"
+                            ],
+                            "name": "DirectoryService-EventLog"
+                        }
+                    ]
+                },
+                "destinations": {
+                    "logAnalytics": [
+                        {
+                            "workspaceResourceId": "[parameters('Workspace Resource Id')]",
+                            "name": "[variables('workspaceName')]"
+                        }
+                    ]
+                },
+                "dataFlows": [
+                    {
+                        "streams": [
+                            "Microsoft-Event"
+                        ],
+                        "destinations": [
+                            "[variables('workspaceName')]"
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workspaceName": {
+      "value": "UPDATE-ME-customer-workspace-name"
+    },
+    "workspaceResourceGroup": {
+      "value": "UPDATE-ME-customer-resource-group"
+    },
+    "actionGroupName": {
+      "value": "ag-email-il-01"
+    },
+    "actionGroupShortName": {
+      "value": "AgEmailIL01"
+    },
+    "notificationEmail": {
+      "value": "UPDATE-ME@contoso.com"
+    },
+    "notificationEmailOps": {
+      "value": "UPDATE-ME@contoso.com"
+    },
+    "cpuWarningThreshold": {
+      "value": 85
+    },
+    "cpuCriticalThreshold": {
+      "value": 95
+    },
+    "memoryWarningThresholdMB": {
+      "value": 1024
+    },
+    "memoryCriticalThresholdMB": {
+      "value": 500
+    },
+    "diskWarningThresholdPercent": {
+      "value": 15
+    },
+    "diskCriticalThresholdPercent": {
+      "value": 10
+    },
+    "heartbeatThresholdMinutes": {
+      "value": 5
+    }
+  }
+}

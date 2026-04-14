@@ -1,0 +1,105 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "Contoso PoC — Data Collection Rule: Security Events. Collects privileged group membership changes, account lockouts, logon failures, and audit policy changes."
+  },
+  "parameters": {
+    "Data collection rule name": {
+      "type": "string",
+      "defaultValue": "dcr-contoso-security-events",
+      "metadata": {
+        "description": "Enter the Data collection rule (DCR) name."
+      }
+    },
+    "Workspace Resource Id": {
+      "type": "string",
+      "metadata": {
+        "description": "Enter the Workspace Resource ID of the Log Analytics Workspace to send data to."
+      }
+    }
+  },
+  "variables": {
+    "workspaceName": "[split(parameters('Workspace Resource Id'),'/')[8]]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Insights/dataCollectionRules",
+      "apiVersion": "2022-06-01",
+      "name": "[parameters('Data collection rule name')]",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "project": "contoso-monitor-poc",
+        "scope": "security",
+        "createdBy": "arm-template"
+      },
+      "kind": "Windows",
+      "properties": {
+        "description": "Collects targeted Windows Security events for privileged group monitoring, account lockouts, failed logons, and audit policy changes.",
+        "dataSources": {
+          "windowsEventLogs": [
+            {
+              "name": "securityGroupChanges",
+              "streams": ["Microsoft-SecurityEvent"],
+              "xPathQueries": [
+                "Security!*[System[(EventID=4728 or EventID=4729 or EventID=4732 or EventID=4733 or EventID=4756 or EventID=4757 or EventID=4735 or EventID=4737 or EventID=4755)]]"
+              ]
+            },
+            {
+              "name": "accountLockouts",
+              "streams": ["Microsoft-SecurityEvent"],
+              "xPathQueries": [
+                "Security!*[System[(EventID=4740 or EventID=4767)]]"
+              ]
+            },
+            {
+              "name": "logonFailures",
+              "streams": ["Microsoft-SecurityEvent"],
+              "xPathQueries": [
+                "Security!*[System[(EventID=4625 or EventID=4771)]]"
+              ]
+            },
+            {
+              "name": "userAccountChanges",
+              "streams": ["Microsoft-SecurityEvent"],
+              "xPathQueries": [
+                "Security!*[System[(EventID=4720 or EventID=4722 or EventID=4723 or EventID=4724 or EventID=4725 or EventID=4726)]]"
+              ]
+            },
+            {
+              "name": "auditPolicyChanges",
+              "streams": ["Microsoft-SecurityEvent"],
+              "xPathQueries": [
+                "Security!*[System[(EventID=4719 or EventID=4907)]]"
+              ]
+            }
+          ]
+        },
+        "destinations": {
+          "logAnalytics": [
+            {
+              "workspaceResourceId": "[parameters('Workspace Resource Id')]",
+              "name": "[variables('workspaceName')]"
+            }
+          ]
+        },
+        "dataFlows": [
+          {
+            "streams": ["Microsoft-SecurityEvent"],
+            "destinations": ["[variables('workspaceName')]"]
+          }
+        ]
+      }
+    }
+  ],
+  "outputs": {
+    "dcrId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Insights/dataCollectionRules', parameters('Data collection rule name'))]"
+    },
+    "dcrName": {
+      "type": "string",
+      "value": "[parameters('Data collection rule name')]"
+    }
+  }
+}
