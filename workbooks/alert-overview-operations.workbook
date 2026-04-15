@@ -56,13 +56,11 @@
             "type": 6,
             "isRequired": true,
             "multiSelect": false,
-            "query": "summarize Count = count() by subscriptionId\n| project value = strcat('/subscriptions/', subscriptionId), label = subscriptionId",
             "typeSettings": {
               "additionalResourceOptions": [],
               "includeAll": false
             },
-            "queryType": 1,
-            "resourceType": "microsoft.resourcegraph/resources"
+            "value": ""
           },
           {
             "id": "la-workspace-param-001",
