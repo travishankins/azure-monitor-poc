@@ -56,7 +56,7 @@
               "name": "serviceControlManager",
               "streams": ["Microsoft-Event"],
               "xPathQueries": [
-                "System!*[System[Provider[@Name='Service Control Manager'] and (EventID=7036 or EventID=7040 or EventID=7045 or EventID=7034)]]"
+                "System!*[System[Provider[@Name='Service Control Manager'] and (EventID=7040 or EventID=7034)]]"
               ]
             },
             {
