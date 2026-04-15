@@ -110,7 +110,25 @@
         "visualization": "tiles",
         "tileSettings": {
           "titleContent": {
+            "columnMatch": "Total Servers",
             "formatter": 1
+          },
+          "subtitleContent": {
+            "columnMatch": "Online"
+          },
+          "leftContent": {
+            "columnMatch": "Total Servers",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "auto"
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "Offline",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "redBright"
+            }
           },
           "showBorder": true
         }
