@@ -69,18 +69,14 @@
             "label": "Log Analytics",
             "type": 5,
             "isRequired": true,
-            "query": "resources\n| where type == \"microsoft.operationalinsights/workspaces\"\n| project value = id, label = name, selected = true",
             "typeSettings": {
+              "additionalResourceOptions": [],
+              "showDefault": false,
               "resourceTypeFilter": {
                 "microsoft.operationalinsights/workspaces": true
-              },
-              "additionalResourceOptions": []
+              }
             },
-            "queryType": 1,
-            "resourceType": "microsoft.operationalinsights/workspaces",
-            "crossComponentResources": [
-              "{Subscription}"
-            ]
+            "resourceType": "microsoft.operationalinsights/workspaces"
           }
         ],
         "style": "pills",
