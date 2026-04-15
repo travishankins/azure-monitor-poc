@@ -49,13 +49,29 @@
             }
           },
           {
+            "id": "sub-param-001",
+            "version": "KqlParameterItem/1.0",
+            "name": "Subscription",
+            "label": "Subscription",
+            "type": 6,
+            "isRequired": true,
+            "multiSelect": false,
+            "query": "summarize Count = count() by subscriptionId\n| project value = strcat('/subscriptions/', subscriptionId), label = subscriptionId",
+            "typeSettings": {
+              "additionalResourceOptions": [],
+              "includeAll": false
+            },
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources"
+          },
+          {
             "id": "la-workspace-param-001",
             "version": "KqlParameterItem/1.0",
             "name": "LogAnalytics",
             "label": "Log Analytics",
             "type": 5,
             "isRequired": true,
-            "query": "resources\n| where type == \"microsoft.operationalinsights/workspaces\"\n| project value = id, label = name",
+            "query": "resources\n| where type == \"microsoft.operationalinsights/workspaces\"\n| project value = id, label = name, selected = true",
             "typeSettings": {
               "resourceTypeFilter": {
                 "microsoft.operationalinsights/workspaces": true
@@ -63,7 +79,10 @@
               "additionalResourceOptions": []
             },
             "queryType": 1,
-            "resourceType": "microsoft.operationalinsights/workspaces"
+            "resourceType": "microsoft.operationalinsights/workspaces",
+            "crossComponentResources": [
+              "{Subscription}"
+            ]
           }
         ],
         "style": "pills",
@@ -83,7 +102,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SecurityEvent\n| where EventID in (4728, 4729, 4732, 4733, 4756, 4757, 4735, 4737, 4755)\n| summarize GroupChanges = count()\n| extend Category = 'Privileged Group Changes', Icon = '\ud83d\udd10'\n| union (\n    SecurityEvent\n    | where EventID in (4740, 4767)\n    | summarize GroupChanges = count()\n    | extend Category = 'Account Lockouts', Icon = '\ud83d\udd12'\n)\n| union (\n    SecurityEvent\n    | where EventID in (4625, 4771)\n    | summarize GroupChanges = count()\n    | extend Category = 'Failed Logons', Icon = '\u26d4'\n)\n| union (\n    SecurityEvent\n    | where EventID in (4720, 4722, 4723, 4724, 4725, 4726)\n    | summarize GroupChanges = count()\n    | extend Category = 'User Account Changes', Icon = '\ud83d\udc64'\n)\n| union (\n    SecurityEvent\n    | where EventID in (4719, 4907)\n    | summarize GroupChanges = count()\n    | extend Category = 'Audit Policy Changes', Icon = '\ud83d\udccb'\n)\n| project Icon, Category, ['Event Count'] = GroupChanges",
+        "query": "SecurityEvent\n| where EventID in (4728, 4729, 4732, 4733, 4756, 4757, 4735, 4737, 4755)\n| summarize GroupChanges = count()\n| extend Category = 'Privileged Group Changes', Icon = '🔐'\n| union (\n    SecurityEvent\n    | where EventID in (4740, 4767)\n    | summarize GroupChanges = count()\n    | extend Category = 'Account Lockouts', Icon = '🔒'\n)\n| union (\n    SecurityEvent\n    | where EventID in (4625, 4771)\n    | summarize GroupChanges = count()\n    | extend Category = 'Failed Logons', Icon = '⛔'\n)\n| union (\n    SecurityEvent\n    | where EventID in (4720, 4722, 4723, 4724, 4725, 4726)\n    | summarize GroupChanges = count()\n    | extend Category = 'User Account Changes', Icon = '👤'\n)\n| union (\n    SecurityEvent\n    | where EventID in (4719, 4907)\n    | summarize GroupChanges = count()\n    | extend Category = 'Audit Policy Changes', Icon = '📋'\n)\n| project Icon, Category, ['Event Count'] = GroupChanges",
         "size": 3,
         "title": "Security Event Counts by Category",
         "timeContextFromParameter": "TimeRange",

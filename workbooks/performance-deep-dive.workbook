@@ -52,13 +52,29 @@
             }
           },
           {
+            "id": "sub-param-001",
+            "version": "KqlParameterItem/1.0",
+            "name": "Subscription",
+            "label": "Subscription",
+            "type": 6,
+            "isRequired": true,
+            "multiSelect": false,
+            "query": "summarize Count = count() by subscriptionId\n| project value = strcat('/subscriptions/', subscriptionId), label = subscriptionId",
+            "typeSettings": {
+              "additionalResourceOptions": [],
+              "includeAll": false
+            },
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources"
+          },
+          {
             "id": "la-workspace-param-001",
             "version": "KqlParameterItem/1.0",
             "name": "LogAnalytics",
             "label": "Log Analytics",
             "type": 5,
             "isRequired": true,
-            "query": "resources\n| where type == \"microsoft.operationalinsights/workspaces\"\n| project value = id, label = name",
+            "query": "resources\n| where type == \"microsoft.operationalinsights/workspaces\"\n| project value = id, label = name, selected = true",
             "typeSettings": {
               "resourceTypeFilter": {
                 "microsoft.operationalinsights/workspaces": true
@@ -66,7 +82,10 @@
               "additionalResourceOptions": []
             },
             "queryType": 1,
-            "resourceType": "microsoft.operationalinsights/workspaces"
+            "resourceType": "microsoft.operationalinsights/workspaces",
+            "crossComponentResources": [
+              "{Subscription}"
+            ]
           },
           {
             "id": "d2e58a52-7c22-4d11-9e42-1f0e80f1d002",
@@ -140,7 +159,7 @@
         "version": "KqlItem/1.0",
         "query": "Perf\n| where ObjectName == 'Processor' and CounterName == '% Processor Time' and InstanceName == '_Total'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgCPU = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
         "size": 0,
-        "title": "CPU % Processor Time \u2014 Trend",
+        "title": "CPU % Processor Time — Trend",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
@@ -157,7 +176,7 @@
         "version": "KqlItem/1.0",
         "query": "Perf\n| where ObjectName == 'System' and CounterName == 'Processor Queue Length'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgQueueLen = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
         "size": 0,
-        "title": "Processor Queue Length \u2014 Trend (Sustained > 2 indicates CPU bottleneck)",
+        "title": "Processor Queue Length — Trend (Sustained > 2 indicates CPU bottleneck)",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
@@ -209,7 +228,7 @@
         "version": "KqlItem/1.0",
         "query": "Perf\n| where ObjectName == 'Memory' and CounterName == 'Available MBytes'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgAvailMB = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
         "size": 0,
-        "title": "Available Memory (MB) \u2014 Trend",
+        "title": "Available Memory (MB) — Trend",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
@@ -226,7 +245,7 @@
         "version": "KqlItem/1.0",
         "query": "Perf\n| where ObjectName == 'Memory' and CounterName == '% Committed Bytes In Use'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgCommitted = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
         "size": 0,
-        "title": "% Committed Bytes In Use \u2014 Trend",
+        "title": "% Committed Bytes In Use — Trend",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
@@ -243,7 +262,7 @@
         "version": "KqlItem/1.0",
         "query": "Perf\n| where ObjectName == 'Memory' and CounterName == 'Pages/sec'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgPagesPerSec = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
         "size": 0,
-        "title": "Memory Pages/sec \u2014 Trend (Sustained high values indicate memory pressure)",
+        "title": "Memory Pages/sec — Trend (Sustained high values indicate memory pressure)",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
@@ -295,7 +314,7 @@
         "version": "KqlItem/1.0",
         "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName in ('Avg. Disk sec/Read', 'Avg. Disk sec/Write')\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgLatencyMs = round(avg(CounterValue) * 1000, 2) by Computer, InstanceName, CounterName\n| sort by AvgLatencyMs desc",
         "size": 0,
-        "title": "Disk Latency (ms) \u2014 Avg Read/Write per Volume (>25ms = warning, >50ms = critical)",
+        "title": "Disk Latency (ms) — Avg Read/Write per Volume (>25ms = warning, >50ms = critical)",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
@@ -323,7 +342,7 @@
         "version": "KqlItem/1.0",
         "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName == 'Avg. Disk Queue Length'\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgQueueLen = avg(CounterValue) by Computer, InstanceName, bin(TimeGenerated, 5m)\n| render timechart",
         "size": 0,
-        "title": "Disk Queue Length \u2014 Trend (Sustained > 2 indicates disk bottleneck)",
+        "title": "Disk Queue Length — Trend (Sustained > 2 indicates disk bottleneck)",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
@@ -340,7 +359,7 @@
         "version": "KqlItem/1.0",
         "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName in ('Disk Reads/sec', 'Disk Writes/sec')\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgIOPS = round(avg(CounterValue), 1) by Computer, InstanceName, CounterName, bin(TimeGenerated, 5m)\n| render timechart",
         "size": 0,
-        "title": "Disk IOPS (Reads/sec & Writes/sec) \u2014 Trend",
+        "title": "Disk IOPS (Reads/sec & Writes/sec) — Trend",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
@@ -364,7 +383,7 @@
         "version": "KqlItem/1.0",
         "query": "Perf\n| where ObjectName == 'Network Interface' and CounterName in ('Bytes Sent/sec', 'Bytes Received/sec')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgBytesPerSec = avg(CounterValue) by Computer, CounterName, bin(TimeGenerated, 5m)\n| extend Mbps = round(AvgBytesPerSec * 8 / 1000000, 2)\n| project TimeGenerated, Series = strcat(Computer, ' - ', CounterName), Mbps\n| render timechart",
         "size": 0,
-        "title": "Network Sent/Received (Mbps) \u2014 Trend",
+        "title": "Network Sent/Received (Mbps) — Trend",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
@@ -381,7 +400,7 @@
         "version": "KqlItem/1.0",
         "query": "Perf\n| where ObjectName == 'Network Interface' and CounterName == 'Output Queue Length'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgQueueLen = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
         "size": 0,
-        "title": "Network Output Queue Length \u2014 Trend (> 0 sustained indicates NIC saturation)",
+        "title": "Network Output Queue Length — Trend (> 0 sustained indicates NIC saturation)",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",

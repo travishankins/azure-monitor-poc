@@ -4,7 +4,7 @@
     {
       "type": 1,
       "content": {
-        "json": "# Server Health Overview\n---\nThis workbook provides a consolidated view of server health across your Azure Arc-enabled and Azure VM estate. It replicates the SCOM \"State\" dashboard \u2014 showing availability, CPU, memory, disk, and network at a glance.\n\n**Data Sources:** Heartbeat, Perf (via AMA + DCRs)"
+        "json": "# Server Health Overview\n---\nThis workbook provides a consolidated view of server health across your Azure Arc-enabled and Azure VM estate. It replicates the SCOM \"State\" dashboard — showing availability, CPU, memory, disk, and network at a glance.\n\n**Data Sources:** Heartbeat, Perf (via AMA + DCRs)"
       },
       "name": "header"
     },
@@ -56,13 +56,29 @@
             }
           },
           {
+            "id": "sub-param-001",
+            "version": "KqlParameterItem/1.0",
+            "name": "Subscription",
+            "label": "Subscription",
+            "type": 6,
+            "isRequired": true,
+            "multiSelect": false,
+            "query": "summarize Count = count() by subscriptionId\n| project value = strcat('/subscriptions/', subscriptionId), label = subscriptionId",
+            "typeSettings": {
+              "additionalResourceOptions": [],
+              "includeAll": false
+            },
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources"
+          },
+          {
             "id": "la-workspace-param-001",
             "version": "KqlParameterItem/1.0",
             "name": "LogAnalytics",
             "label": "Log Analytics",
             "type": 5,
             "isRequired": true,
-            "query": "resources\n| where type == \"microsoft.operationalinsights/workspaces\"\n| project value = id, label = name",
+            "query": "resources\n| where type == \"microsoft.operationalinsights/workspaces\"\n| project value = id, label = name, selected = true",
             "typeSettings": {
               "resourceTypeFilter": {
                 "microsoft.operationalinsights/workspaces": true
@@ -70,7 +86,10 @@
               "additionalResourceOptions": []
             },
             "queryType": 1,
-            "resourceType": "microsoft.operationalinsights/workspaces"
+            "resourceType": "microsoft.operationalinsights/workspaces",
+            "crossComponentResources": [
+              "{Subscription}"
+            ]
           },
           {
             "id": "b3f58a52-7c22-4d11-9e42-1f0e80f1d637",
@@ -114,9 +133,9 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Heartbeat\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize LastHeartbeat = max(TimeGenerated) by Computer, OSType, ResourceGroup\n| extend Status = iff(LastHeartbeat < ago(5m), '\ud83d\udd34 Offline', '\ud83d\udfe2 Online')\n| extend MinutesSinceHeartbeat = datetime_diff('minute', now(), LastHeartbeat)\n| project Computer, Status, ['Last Heartbeat'] = LastHeartbeat, ['Minutes Ago'] = MinutesSinceHeartbeat, ['OS Type'] = OSType, ['Resource Group'] = ResourceGroup\n| sort by Status asc, Computer asc",
+        "query": "Heartbeat\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize LastHeartbeat = max(TimeGenerated) by Computer, OSType, ResourceGroup\n| extend Status = iff(LastHeartbeat < ago(5m), '🔴 Offline', '🟢 Online')\n| extend MinutesSinceHeartbeat = datetime_diff('minute', now(), LastHeartbeat)\n| project Computer, Status, ['Last Heartbeat'] = LastHeartbeat, ['Minutes Ago'] = MinutesSinceHeartbeat, ['OS Type'] = OSType, ['Resource Group'] = ResourceGroup\n| sort by Status asc, Computer asc",
         "size": 0,
-        "title": "Server Status \u2014 Heartbeat Based",
+        "title": "Server Status — Heartbeat Based",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
@@ -174,7 +193,7 @@
     {
       "type": 1,
       "content": {
-        "json": "## Performance Summary \u2014 Current State"
+        "json": "## Performance Summary — Current State"
       },
       "name": "section-perf-summary"
     },
@@ -309,7 +328,7 @@
         "version": "KqlItem/1.0",
         "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName == '% Free Space'\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgFreePercent = round(avg(CounterValue), 1) by Computer, InstanceName\n| sort by AvgFreePercent asc\n| render barchart",
         "size": 0,
-        "title": "Disk Free Space % \u2014 Visual",
+        "title": "Disk Free Space % — Visual",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
