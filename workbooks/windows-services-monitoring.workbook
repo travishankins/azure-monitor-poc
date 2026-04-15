@@ -22,18 +22,48 @@
             "isRequired": true,
             "typeSettings": {
               "selectableValues": [
-                { "durationMs": 3600000 },
-                { "durationMs": 14400000 },
-                { "durationMs": 43200000 },
-                { "durationMs": 86400000, "isInitialTime": true },
-                { "durationMs": 604800000 },
-                { "durationMs": 2592000000 }
+                {
+                  "durationMs": 3600000
+                },
+                {
+                  "durationMs": 14400000
+                },
+                {
+                  "durationMs": 43200000
+                },
+                {
+                  "durationMs": 86400000,
+                  "isInitialTime": true
+                },
+                {
+                  "durationMs": 604800000
+                },
+                {
+                  "durationMs": 2592000000
+                }
               ],
               "allowCustom": true
             },
             "value": {
               "durationMs": 86400000
             }
+          },
+          {
+            "id": "la-workspace-param-001",
+            "version": "KqlParameterItem/1.0",
+            "name": "LogAnalytics",
+            "label": "Log Analytics",
+            "type": 5,
+            "isRequired": true,
+            "query": "resources\n| where type == \"microsoft.operationalinsights/workspaces\"\n| project value = id, label = name",
+            "typeSettings": {
+              "resourceTypeFilter": {
+                "microsoft.operationalinsights/workspaces": true
+              },
+              "additionalResourceOptions": []
+            },
+            "queryType": 1,
+            "resourceType": "microsoft.operationalinsights/workspaces"
           },
           {
             "id": "g2b58a52-7c22-4d11-9e42-1f0e80f1d202",
@@ -47,12 +77,17 @@
             "delimiter": ",",
             "query": "Heartbeat\n| distinct Computer\n| sort by Computer asc",
             "typeSettings": {
-              "additionalResourceOptions": ["value::all"],
+              "additionalResourceOptions": [
+                "value::all"
+              ],
               "showDefault": false
             },
             "defaultValue": "value::all",
             "queryType": 0,
-            "resourceType": "microsoft.operationalinsights/workspaces"
+            "resourceType": "microsoft.operationalinsights/workspaces",
+            "crossComponentResources": [
+              "{LogAnalytics}"
+            ]
           }
         ],
         "style": "pills",
@@ -72,7 +107,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Event\n| where EventLog == 'System' and Source == 'Service Control Manager' and EventID == 7036\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| parse EventData with * '<Data Name=\"param1\">' ServiceName '</Data><Data Name=\"param2\">' ServiceState '</Data>' *\n| where ServiceName in ('DHCP Server', 'CcmExec', 'SMS_EXECUTIVE', 'W32Time', 'DNS', 'NTDS', 'Netlogon', 'DFSR', 'IsmServ', 'Kdc', 'LanmanServer', 'LanmanWorkstation', 'WinRM')\n| summarize arg_max(TimeGenerated, *) by Computer, ServiceName\n| extend Status = iff(ServiceState =~ 'running', '🟢 Running', '🔴 Stopped')\n| project Computer, ['Service Name'] = ServiceName, Status, ['Last Change'] = TimeGenerated\n| sort by Status desc, Computer asc, ['Service Name'] asc",
+        "query": "Event\n| where EventLog == 'System' and Source == 'Service Control Manager' and EventID == 7036\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| parse EventData with * '<Data Name=\"param1\">' ServiceName '</Data><Data Name=\"param2\">' ServiceState '</Data>' *\n| where ServiceName in ('DHCP Server', 'CcmExec', 'SMS_EXECUTIVE', 'W32Time', 'DNS', 'NTDS', 'Netlogon', 'DFSR', 'IsmServ', 'Kdc', 'LanmanServer', 'LanmanWorkstation', 'WinRM')\n| summarize arg_max(TimeGenerated, *) by Computer, ServiceName\n| extend Status = iff(ServiceState =~ 'running', '\ud83d\udfe2 Running', '\ud83d\udd34 Stopped')\n| project Computer, ['Service Name'] = ServiceName, Status, ['Last Change'] = TimeGenerated\n| sort by Status desc, Computer asc, ['Service Name'] asc",
         "size": 0,
         "title": "Critical Service Status (Last Known State)",
         "timeContextFromParameter": "TimeRange",
@@ -86,7 +121,10 @@
               "formatter": 1
             }
           ]
-        }
+        },
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ]
       },
       "name": "critical-service-state"
     },
@@ -107,7 +145,10 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "table"
+        "visualization": "table",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ]
       },
       "name": "service-stop-table"
     },
@@ -121,7 +162,10 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "barchart"
+        "visualization": "barchart",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ]
       },
       "name": "service-stop-topn"
     },
@@ -142,7 +186,10 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "table"
+        "visualization": "table",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ]
       },
       "name": "service-crash-table"
     },
@@ -163,7 +210,10 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "table"
+        "visualization": "table",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ]
       },
       "name": "new-service-table"
     },
@@ -184,14 +234,17 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "table"
+        "visualization": "table",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ]
       },
       "name": "start-type-change-table"
     },
     {
       "type": 1,
       "content": {
-        "json": "## Service Event Timeline\nAll Service Control Manager events over time — useful for correlating service disruptions."
+        "json": "## Service Event Timeline\nAll Service Control Manager events over time \u2014 useful for correlating service disruptions."
       },
       "name": "section-timeline"
     },
@@ -205,7 +258,10 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "timechart"
+        "visualization": "timechart",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ]
       },
       "name": "service-timeline"
     }

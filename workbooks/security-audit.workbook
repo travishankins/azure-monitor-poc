@@ -22,18 +22,48 @@
             "isRequired": true,
             "typeSettings": {
               "selectableValues": [
-                { "durationMs": 3600000 },
-                { "durationMs": 14400000 },
-                { "durationMs": 43200000 },
-                { "durationMs": 86400000, "isInitialTime": true },
-                { "durationMs": 604800000 },
-                { "durationMs": 2592000000 }
+                {
+                  "durationMs": 3600000
+                },
+                {
+                  "durationMs": 14400000
+                },
+                {
+                  "durationMs": 43200000
+                },
+                {
+                  "durationMs": 86400000,
+                  "isInitialTime": true
+                },
+                {
+                  "durationMs": 604800000
+                },
+                {
+                  "durationMs": 2592000000
+                }
               ],
               "allowCustom": true
             },
             "value": {
               "durationMs": 86400000
             }
+          },
+          {
+            "id": "la-workspace-param-001",
+            "version": "KqlParameterItem/1.0",
+            "name": "LogAnalytics",
+            "label": "Log Analytics",
+            "type": 5,
+            "isRequired": true,
+            "query": "resources\n| where type == \"microsoft.operationalinsights/workspaces\"\n| project value = id, label = name",
+            "typeSettings": {
+              "resourceTypeFilter": {
+                "microsoft.operationalinsights/workspaces": true
+              },
+              "additionalResourceOptions": []
+            },
+            "queryType": 1,
+            "resourceType": "microsoft.operationalinsights/workspaces"
           }
         ],
         "style": "pills",
@@ -53,7 +83,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SecurityEvent\n| where EventID in (4728, 4729, 4732, 4733, 4756, 4757, 4735, 4737, 4755)\n| summarize GroupChanges = count()\n| extend Category = 'Privileged Group Changes', Icon = '🔐'\n| union (\n    SecurityEvent\n    | where EventID in (4740, 4767)\n    | summarize GroupChanges = count()\n    | extend Category = 'Account Lockouts', Icon = '🔒'\n)\n| union (\n    SecurityEvent\n    | where EventID in (4625, 4771)\n    | summarize GroupChanges = count()\n    | extend Category = 'Failed Logons', Icon = '⛔'\n)\n| union (\n    SecurityEvent\n    | where EventID in (4720, 4722, 4723, 4724, 4725, 4726)\n    | summarize GroupChanges = count()\n    | extend Category = 'User Account Changes', Icon = '👤'\n)\n| union (\n    SecurityEvent\n    | where EventID in (4719, 4907)\n    | summarize GroupChanges = count()\n    | extend Category = 'Audit Policy Changes', Icon = '📋'\n)\n| project Icon, Category, ['Event Count'] = GroupChanges",
+        "query": "SecurityEvent\n| where EventID in (4728, 4729, 4732, 4733, 4756, 4757, 4735, 4737, 4755)\n| summarize GroupChanges = count()\n| extend Category = 'Privileged Group Changes', Icon = '\ud83d\udd10'\n| union (\n    SecurityEvent\n    | where EventID in (4740, 4767)\n    | summarize GroupChanges = count()\n    | extend Category = 'Account Lockouts', Icon = '\ud83d\udd12'\n)\n| union (\n    SecurityEvent\n    | where EventID in (4625, 4771)\n    | summarize GroupChanges = count()\n    | extend Category = 'Failed Logons', Icon = '\u26d4'\n)\n| union (\n    SecurityEvent\n    | where EventID in (4720, 4722, 4723, 4724, 4725, 4726)\n    | summarize GroupChanges = count()\n    | extend Category = 'User Account Changes', Icon = '\ud83d\udc64'\n)\n| union (\n    SecurityEvent\n    | where EventID in (4719, 4907)\n    | summarize GroupChanges = count()\n    | extend Category = 'Audit Policy Changes', Icon = '\ud83d\udccb'\n)\n| project Icon, Category, ['Event Count'] = GroupChanges",
         "size": 3,
         "title": "Security Event Counts by Category",
         "timeContextFromParameter": "TimeRange",
@@ -73,7 +103,10 @@
             }
           },
           "showBorder": true
-        }
+        },
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ]
       },
       "name": "security-summary-tiles"
     },
@@ -94,7 +127,10 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "table"
+        "visualization": "table",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ]
       },
       "name": "group-change-log"
     },
@@ -108,7 +144,10 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "barchart"
+        "visualization": "barchart",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ]
       },
       "name": "group-change-barchart"
     },
@@ -129,7 +168,10 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "table"
+        "visualization": "table",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ]
       },
       "name": "lockout-table"
     },
@@ -143,7 +185,10 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "barchart"
+        "visualization": "barchart",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ]
       },
       "name": "lockout-topn"
     },
@@ -164,7 +209,10 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "timechart"
+        "visualization": "timechart",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ]
       },
       "name": "failed-logon-trend"
     },
@@ -178,7 +226,10 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "table"
+        "visualization": "table",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ]
       },
       "name": "failed-logon-detail"
     },
@@ -192,7 +243,10 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "barchart"
+        "visualization": "barchart",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ]
       },
       "name": "failed-logon-source-ip"
     },
@@ -213,7 +267,10 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "table"
+        "visualization": "table",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ]
       },
       "name": "user-lifecycle-table"
     },
@@ -234,7 +291,10 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "table"
+        "visualization": "table",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ]
       },
       "name": "audit-policy-table"
     }

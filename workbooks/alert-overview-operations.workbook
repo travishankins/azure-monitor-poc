@@ -22,18 +22,48 @@
             "isRequired": true,
             "typeSettings": {
               "selectableValues": [
-                { "durationMs": 3600000 },
-                { "durationMs": 14400000 },
-                { "durationMs": 43200000 },
-                { "durationMs": 86400000, "isInitialTime": true },
-                { "durationMs": 604800000 },
-                { "durationMs": 2592000000 }
+                {
+                  "durationMs": 3600000
+                },
+                {
+                  "durationMs": 14400000
+                },
+                {
+                  "durationMs": 43200000
+                },
+                {
+                  "durationMs": 86400000,
+                  "isInitialTime": true
+                },
+                {
+                  "durationMs": 604800000
+                },
+                {
+                  "durationMs": 2592000000
+                }
               ],
               "allowCustom": true
             },
             "value": {
               "durationMs": 86400000
             }
+          },
+          {
+            "id": "la-workspace-param-001",
+            "version": "KqlParameterItem/1.0",
+            "name": "LogAnalytics",
+            "label": "Log Analytics",
+            "type": 5,
+            "isRequired": true,
+            "query": "resources\n| where type == \"microsoft.operationalinsights/workspaces\"\n| project value = id, label = name",
+            "typeSettings": {
+              "resourceTypeFilter": {
+                "microsoft.operationalinsights/workspaces": true
+              },
+              "additionalResourceOptions": []
+            },
+            "queryType": 1,
+            "resourceType": "microsoft.operationalinsights/workspaces"
           }
         ],
         "style": "pills",
@@ -53,12 +83,15 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Heartbeat\n| summarize LastHeartbeat = max(TimeGenerated) by Computer\n| extend Status = iff(LastHeartbeat < ago(5m), 'Offline', 'Online')\n| summarize\n    Online = countif(Status == 'Online'),\n    Offline = countif(Status == 'Offline'),\n    Total = count()\n| project\n    ['Total Servers'] = Total,\n    ['Online'] = Online,\n    ['Offline'] = Offline",
+        "query": "Heartbeat\n| summarize LastHeartbeat = max(TimeGenerated) by Computer\n| extend Status = iff(LastHeartbeat < ago(5m), 'Offline', 'Online')\n| summarize\n Online = countif(Status == 'Online'),\n Offline = countif(Status == 'Offline'),\n Total = count()\n| project\n ['Total Servers'] = Total,\n ['Online'] = Online,\n ['Offline'] = Offline",
         "size": 3,
         "title": "Server Fleet Status",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ],
         "visualization": "tiles",
         "tileSettings": {
           "titleContent": {
@@ -72,7 +105,7 @@
     {
       "type": 1,
       "content": {
-        "json": "## Windows Event Errors & Warnings\nApplication and System event logs — Warning, Error, and Critical events."
+        "json": "## Windows Event Errors & Warnings\nApplication and System event logs \u2014 Warning, Error, and Critical events."
       },
       "name": "section-windows-events"
     },
@@ -86,6 +119,9 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ],
         "visualization": "timechart"
       },
       "name": "events-over-time"
@@ -100,6 +136,9 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ],
         "visualization": "table",
         "gridSettings": {
           "formatters": [
@@ -125,6 +164,9 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ],
         "visualization": "barchart"
       },
       "name": "errors-by-server"
@@ -140,12 +182,15 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let cpuBreach = Perf\n| where ObjectName == 'Processor' and CounterName == '% Processor Time' and InstanceName == '_Total'\n| summarize AvgCPU = round(avg(CounterValue), 1) by Computer\n| where AvgCPU > 85\n| extend Metric = 'CPU %', Value = tostring(AvgCPU), Severity = iff(AvgCPU > 95, '🔴 Critical', '🟡 Warning');\nlet memBreach = Perf\n| where ObjectName == 'Memory' and CounterName == 'Available MBytes'\n| summarize AvgMB = round(avg(CounterValue), 0) by Computer\n| where AvgMB < 1024\n| extend Metric = 'Avail Memory MB', Value = tostring(AvgMB), Severity = iff(AvgMB < 500, '🔴 Critical', '🟡 Warning');\nlet diskBreach = Perf\n| where ObjectName == 'LogicalDisk' and CounterName == '% Free Space'\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| summarize MinFree = round(min(CounterValue), 1) by Computer\n| where MinFree < 15\n| extend Metric = 'Disk Free %', Value = tostring(MinFree), Severity = iff(MinFree < 10, '🔴 Critical', '🟡 Warning');\ncpuBreach\n| union memBreach\n| union diskBreach\n| project Computer, Metric, Value, Severity\n| sort by Severity asc, Computer asc",
+        "query": "let cpuBreach = Perf\n| where ObjectName == 'Processor' and CounterName == '% Processor Time' and InstanceName == '_Total'\n| summarize AvgCPU = round(avg(CounterValue), 1) by Computer\n| where AvgCPU > 85\n| extend Metric = 'CPU %', Value = tostring(AvgCPU), Severity = iff(AvgCPU > 95, '\ud83d\udd34 Critical', '\ud83d\udfe1 Warning');\nlet memBreach = Perf\n| where ObjectName == 'Memory' and CounterName == 'Available MBytes'\n| summarize AvgMB = round(avg(CounterValue), 0) by Computer\n| where AvgMB < 1024\n| extend Metric = 'Avail Memory MB', Value = tostring(AvgMB), Severity = iff(AvgMB < 500, '\ud83d\udd34 Critical', '\ud83d\udfe1 Warning');\nlet diskBreach = Perf\n| where ObjectName == 'LogicalDisk' and CounterName == '% Free Space'\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| summarize MinFree = round(min(CounterValue), 1) by Computer\n| where MinFree < 15\n| extend Metric = 'Disk Free %', Value = tostring(MinFree), Severity = iff(MinFree < 10, '\ud83d\udd34 Critical', '\ud83d\udfe1 Warning');\ncpuBreach\n| union memBreach\n| union diskBreach\n| project Computer, Metric, Value, Severity\n| sort by Severity asc, Computer asc",
         "size": 0,
         "title": "Servers Exceeding Performance Thresholds (CPU >85%, Memory <1GB, Disk <15%)",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ],
         "visualization": "table"
       },
       "name": "threshold-breach-table"
@@ -167,6 +212,9 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ],
         "visualization": "table",
         "gridSettings": {
           "formatters": [
@@ -192,6 +240,9 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ],
         "visualization": "timechart"
       },
       "name": "ingestion-trend"
@@ -207,12 +258,15 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Heartbeat\n| summarize LastHeartbeat = max(TimeGenerated), HeartbeatCount = count() by Computer, Category, OSType, Version\n| extend AgentStatus = iff(LastHeartbeat < ago(5m), '🔴 Stale', '🟢 Active')\n| project Computer, AgentStatus, ['Agent Type'] = Category, ['OS'] = OSType, ['Agent Version'] = Version, ['Last Heartbeat'] = LastHeartbeat, ['Heartbeats (Period)'] = HeartbeatCount\n| sort by AgentStatus asc, Computer asc",
+        "query": "Heartbeat\n| summarize LastHeartbeat = max(TimeGenerated), HeartbeatCount = count() by Computer, Category, OSType, Version\n| extend AgentStatus = iff(LastHeartbeat < ago(5m), '\ud83d\udd34 Stale', '\ud83d\udfe2 Active')\n| project Computer, AgentStatus, ['Agent Type'] = Category, ['OS'] = OSType, ['Agent Version'] = Version, ['Last Heartbeat'] = LastHeartbeat, ['Heartbeats (Period)'] = HeartbeatCount\n| sort by AgentStatus asc, Computer asc",
         "size": 0,
         "title": "Agent Health & Version",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": [
+          "{LogAnalytics}"
+        ],
         "visualization": "table"
       },
       "name": "agent-health-table"
