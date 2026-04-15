@@ -95,7 +95,8 @@
               "additionalResourceOptions": [
                 "value::all"
               ],
-              "showDefault": false
+              "showDefault": false,
+              "selectAllValue": "*"
             },
             "defaultValue": "value::all",
             "queryType": 0,
@@ -122,7 +123,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Event\n| where EventLog == 'System' and Source == 'Service Control Manager' and EventID == 7036\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| parse EventData with * '<Data Name=\"param1\">' ServiceName '</Data><Data Name=\"param2\">' ServiceState '</Data>' *\n| where ServiceName in ('DHCP Server', 'CcmExec', 'SMS_EXECUTIVE', 'W32Time', 'DNS', 'NTDS', 'Netlogon', 'DFSR', 'IsmServ', 'Kdc', 'LanmanServer', 'LanmanWorkstation', 'WinRM')\n| summarize arg_max(TimeGenerated, *) by Computer, ServiceName\n| extend Status = iff(ServiceState =~ 'running', '🟢 Running', '🔴 Stopped')\n| project Computer, ['Service Name'] = ServiceName, Status, ['Last Change'] = TimeGenerated\n| sort by Status desc, Computer asc, ['Service Name'] asc",
+        "query": "Event\n| where EventLog == 'System' and Source == 'Service Control Manager' and EventID == 7036\n| where '*' in ({Computer}) or Computer in ({Computer})\n| parse EventData with * '<Data Name=\"param1\">' ServiceName '</Data><Data Name=\"param2\">' ServiceState '</Data>' *\n| where ServiceName in ('DHCP Server', 'CcmExec', 'SMS_EXECUTIVE', 'W32Time', 'DNS', 'NTDS', 'Netlogon', 'DFSR', 'IsmServ', 'Kdc', 'LanmanServer', 'LanmanWorkstation', 'WinRM')\n| summarize arg_max(TimeGenerated, *) by Computer, ServiceName\n| extend Status = iff(ServiceState =~ 'running', '🟢 Running', '🔴 Stopped')\n| project Computer, ['Service Name'] = ServiceName, Status, ['Last Change'] = TimeGenerated\n| sort by Status desc, Computer asc, ['Service Name'] asc",
         "size": 0,
         "title": "Critical Service Status (Last Known State)",
         "timeContextFromParameter": "TimeRange",
@@ -154,7 +155,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Event\n| where EventLog == 'System' and Source == 'Service Control Manager' and EventID == 7036\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| parse EventData with * '<Data Name=\"param1\">' ServiceName '</Data><Data Name=\"param2\">' ServiceState '</Data>' *\n| where ServiceState =~ 'stopped'\n| project TimeGenerated, Computer, ServiceName, ServiceState\n| sort by TimeGenerated desc",
+        "query": "Event\n| where EventLog == 'System' and Source == 'Service Control Manager' and EventID == 7036\n| where '*' in ({Computer}) or Computer in ({Computer})\n| parse EventData with * '<Data Name=\"param1\">' ServiceName '</Data><Data Name=\"param2\">' ServiceState '</Data>' *\n| where ServiceState =~ 'stopped'\n| project TimeGenerated, Computer, ServiceName, ServiceState\n| sort by TimeGenerated desc",
         "size": 0,
         "title": "Service Stop Events",
         "timeContextFromParameter": "TimeRange",
@@ -171,7 +172,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Event\n| where EventLog == 'System' and Source == 'Service Control Manager' and EventID == 7036\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| parse EventData with * '<Data Name=\"param1\">' ServiceName '</Data><Data Name=\"param2\">' ServiceState '</Data>' *\n| where ServiceState =~ 'stopped'\n| summarize StopCount = count() by ServiceName\n| sort by StopCount desc\n| take 20\n| render barchart",
+        "query": "Event\n| where EventLog == 'System' and Source == 'Service Control Manager' and EventID == 7036\n| where '*' in ({Computer}) or Computer in ({Computer})\n| parse EventData with * '<Data Name=\"param1\">' ServiceName '</Data><Data Name=\"param2\">' ServiceState '</Data>' *\n| where ServiceState =~ 'stopped'\n| summarize StopCount = count() by ServiceName\n| sort by StopCount desc\n| take 20\n| render barchart",
         "size": 0,
         "title": "Top 20 Most Frequently Stopped Services",
         "timeContextFromParameter": "TimeRange",
@@ -195,7 +196,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Event\n| where EventLog == 'System' and Source == 'Service Control Manager' and EventID == 7034\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| project TimeGenerated, Computer, RenderedDescription\n| sort by TimeGenerated desc",
+        "query": "Event\n| where EventLog == 'System' and Source == 'Service Control Manager' and EventID == 7034\n| where '*' in ({Computer}) or Computer in ({Computer})\n| project TimeGenerated, Computer, RenderedDescription\n| sort by TimeGenerated desc",
         "size": 0,
         "title": "Unexpected Service Terminations (Crashes)",
         "timeContextFromParameter": "TimeRange",
@@ -219,7 +220,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Event\n| where EventLog == 'System' and Source == 'Service Control Manager' and EventID == 7045\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| project TimeGenerated, Computer, RenderedDescription\n| sort by TimeGenerated desc",
+        "query": "Event\n| where EventLog == 'System' and Source == 'Service Control Manager' and EventID == 7045\n| where '*' in ({Computer}) or Computer in ({Computer})\n| project TimeGenerated, Computer, RenderedDescription\n| sort by TimeGenerated desc",
         "size": 0,
         "title": "New Service Installations",
         "timeContextFromParameter": "TimeRange",
@@ -243,7 +244,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Event\n| where EventLog == 'System' and Source == 'Service Control Manager' and EventID == 7040\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| project TimeGenerated, Computer, RenderedDescription\n| sort by TimeGenerated desc",
+        "query": "Event\n| where EventLog == 'System' and Source == 'Service Control Manager' and EventID == 7040\n| where '*' in ({Computer}) or Computer in ({Computer})\n| project TimeGenerated, Computer, RenderedDescription\n| sort by TimeGenerated desc",
         "size": 0,
         "title": "Service Start Type Changes",
         "timeContextFromParameter": "TimeRange",
@@ -267,7 +268,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Event\n| where EventLog == 'System' and Source == 'Service Control Manager'\n| where EventID in (7034, 7036, 7040, 7045)\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize EventCount = count() by EventID, bin(TimeGenerated, 1h)\n| extend EventType = case(\n    EventID == 7034, '7034 - Service Crash',\n    EventID == 7036, '7036 - State Change',\n    EventID == 7040, '7040 - Start Type Change',\n    EventID == 7045, '7045 - New Service Installed',\n    tostring(EventID))\n| project TimeGenerated, EventType, EventCount\n| render timechart",
+        "query": "Event\n| where EventLog == 'System' and Source == 'Service Control Manager'\n| where EventID in (7034, 7036, 7040, 7045)\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize EventCount = count() by EventID, bin(TimeGenerated, 1h)\n| extend EventType = case(\n    EventID == 7034, '7034 - Service Crash',\n    EventID == 7036, '7036 - State Change',\n    EventID == 7040, '7040 - Start Type Change',\n    EventID == 7045, '7045 - New Service Installed',\n    tostring(EventID))\n| project TimeGenerated, EventType, EventCount\n| render timechart",
         "size": 0,
         "title": "Service Control Manager Events Over Time",
         "timeContextFromParameter": "TimeRange",

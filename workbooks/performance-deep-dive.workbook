@@ -98,7 +98,8 @@
               "additionalResourceOptions": [
                 "value::all"
               ],
-              "showDefault": false
+              "showDefault": false,
+              "selectAllValue": "*"
             },
             "defaultValue": "value::all",
             "queryType": 0,
@@ -125,7 +126,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Perf\n| where ObjectName == 'Processor' and CounterName == '% Processor Time' and InstanceName == '_Total'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize\n    AvgCPU = round(avg(CounterValue), 1),\n    P50 = round(percentile(CounterValue, 50), 1),\n    P90 = round(percentile(CounterValue, 90), 1),\n    P95 = round(percentile(CounterValue, 95), 1),\n    MaxCPU = round(max(CounterValue), 1),\n    Samples = count()\n    by Computer\n| sort by AvgCPU desc",
+        "query": "Perf\n| where ObjectName == 'Processor' and CounterName == '% Processor Time' and InstanceName == '_Total'\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize\n    AvgCPU = round(avg(CounterValue), 1),\n    P50 = round(percentile(CounterValue, 50), 1),\n    P90 = round(percentile(CounterValue, 90), 1),\n    P95 = round(percentile(CounterValue, 95), 1),\n    MaxCPU = round(max(CounterValue), 1),\n    Samples = count()\n    by Computer\n| sort by AvgCPU desc",
         "size": 0,
         "title": "CPU Utilization Statistics",
         "timeContextFromParameter": "TimeRange",
@@ -153,7 +154,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Perf\n| where ObjectName == 'Processor' and CounterName == '% Processor Time' and InstanceName == '_Total'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgCPU = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
+        "query": "Perf\n| where ObjectName == 'Processor' and CounterName == '% Processor Time' and InstanceName == '_Total'\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize AvgCPU = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
         "size": 0,
         "title": "CPU % Processor Time — Trend",
         "timeContextFromParameter": "TimeRange",
@@ -170,7 +171,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Perf\n| where ObjectName == 'System' and CounterName == 'Processor Queue Length'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgQueueLen = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
+        "query": "Perf\n| where ObjectName == 'System' and CounterName == 'Processor Queue Length'\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize AvgQueueLen = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
         "size": 0,
         "title": "Processor Queue Length — Trend (Sustained > 2 indicates CPU bottleneck)",
         "timeContextFromParameter": "TimeRange",
@@ -194,7 +195,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Perf\n| where ObjectName == 'Memory' and CounterName == 'Available MBytes'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize\n    AvgAvailMB = round(avg(CounterValue), 0),\n    MinAvailMB = round(min(CounterValue), 0),\n    P5 = round(percentile(CounterValue, 5), 0),\n    MaxAvailMB = round(max(CounterValue), 0)\n    by Computer\n| sort by MinAvailMB asc",
+        "query": "Perf\n| where ObjectName == 'Memory' and CounterName == 'Available MBytes'\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize\n    AvgAvailMB = round(avg(CounterValue), 0),\n    MinAvailMB = round(min(CounterValue), 0),\n    P5 = round(percentile(CounterValue, 5), 0),\n    MaxAvailMB = round(max(CounterValue), 0)\n    by Computer\n| sort by MinAvailMB asc",
         "size": 0,
         "title": "Memory Availability Statistics (MB)",
         "timeContextFromParameter": "TimeRange",
@@ -222,7 +223,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Perf\n| where ObjectName == 'Memory' and CounterName == 'Available MBytes'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgAvailMB = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
+        "query": "Perf\n| where ObjectName == 'Memory' and CounterName == 'Available MBytes'\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize AvgAvailMB = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
         "size": 0,
         "title": "Available Memory (MB) — Trend",
         "timeContextFromParameter": "TimeRange",
@@ -239,7 +240,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Perf\n| where ObjectName == 'Memory' and CounterName == '% Committed Bytes In Use'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgCommitted = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
+        "query": "Perf\n| where ObjectName == 'Memory' and CounterName == '% Committed Bytes In Use'\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize AvgCommitted = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
         "size": 0,
         "title": "% Committed Bytes In Use — Trend",
         "timeContextFromParameter": "TimeRange",
@@ -256,7 +257,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Perf\n| where ObjectName == 'Memory' and CounterName == 'Pages/sec'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgPagesPerSec = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
+        "query": "Perf\n| where ObjectName == 'Memory' and CounterName == 'Pages/sec'\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize AvgPagesPerSec = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
         "size": 0,
         "title": "Memory Pages/sec — Trend (Sustained high values indicate memory pressure)",
         "timeContextFromParameter": "TimeRange",
@@ -280,7 +281,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName == '% Free Space'\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgFree = round(avg(CounterValue), 1), MinFree = round(min(CounterValue), 1) by Computer, InstanceName\n| sort by MinFree asc",
+        "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName == '% Free Space'\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize AvgFree = round(avg(CounterValue), 1), MinFree = round(min(CounterValue), 1) by Computer, InstanceName\n| sort by MinFree asc",
         "size": 0,
         "title": "Disk Free Space % by Volume",
         "timeContextFromParameter": "TimeRange",
@@ -308,7 +309,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName in ('Avg. Disk sec/Read', 'Avg. Disk sec/Write')\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgLatencyMs = round(avg(CounterValue) * 1000, 2) by Computer, InstanceName, CounterName\n| sort by AvgLatencyMs desc",
+        "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName in ('Avg. Disk sec/Read', 'Avg. Disk sec/Write')\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize AvgLatencyMs = round(avg(CounterValue) * 1000, 2) by Computer, InstanceName, CounterName\n| sort by AvgLatencyMs desc",
         "size": 0,
         "title": "Disk Latency (ms) — Avg Read/Write per Volume (>25ms = warning, >50ms = critical)",
         "timeContextFromParameter": "TimeRange",
@@ -336,7 +337,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName == 'Avg. Disk Queue Length'\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgQueueLen = avg(CounterValue) by Computer, InstanceName, bin(TimeGenerated, 5m)\n| render timechart",
+        "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName == 'Avg. Disk Queue Length'\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize AvgQueueLen = avg(CounterValue) by Computer, InstanceName, bin(TimeGenerated, 5m)\n| render timechart",
         "size": 0,
         "title": "Disk Queue Length — Trend (Sustained > 2 indicates disk bottleneck)",
         "timeContextFromParameter": "TimeRange",
@@ -353,7 +354,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName in ('Disk Reads/sec', 'Disk Writes/sec')\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgIOPS = round(avg(CounterValue), 1) by Computer, InstanceName, CounterName, bin(TimeGenerated, 5m)\n| render timechart",
+        "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName in ('Disk Reads/sec', 'Disk Writes/sec')\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize AvgIOPS = round(avg(CounterValue), 1) by Computer, InstanceName, CounterName, bin(TimeGenerated, 5m)\n| render timechart",
         "size": 0,
         "title": "Disk IOPS (Reads/sec & Writes/sec) — Trend",
         "timeContextFromParameter": "TimeRange",
@@ -377,7 +378,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Perf\n| where ObjectName == 'Network Interface' and CounterName in ('Bytes Sent/sec', 'Bytes Received/sec')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgBytesPerSec = avg(CounterValue) by Computer, CounterName, bin(TimeGenerated, 5m)\n| extend Mbps = round(AvgBytesPerSec * 8 / 1000000, 2)\n| project TimeGenerated, Series = strcat(Computer, ' - ', CounterName), Mbps\n| render timechart",
+        "query": "Perf\n| where ObjectName == 'Network Interface' and CounterName in ('Bytes Sent/sec', 'Bytes Received/sec')\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize AvgBytesPerSec = avg(CounterValue) by Computer, CounterName, bin(TimeGenerated, 5m)\n| extend Mbps = round(AvgBytesPerSec * 8 / 1000000, 2)\n| project TimeGenerated, Series = strcat(Computer, ' - ', CounterName), Mbps\n| render timechart",
         "size": 0,
         "title": "Network Sent/Received (Mbps) — Trend",
         "timeContextFromParameter": "TimeRange",
@@ -394,7 +395,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Perf\n| where ObjectName == 'Network Interface' and CounterName == 'Output Queue Length'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgQueueLen = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
+        "query": "Perf\n| where ObjectName == 'Network Interface' and CounterName == 'Output Queue Length'\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize AvgQueueLen = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
         "size": 0,
         "title": "Network Output Queue Length — Trend (> 0 sustained indicates NIC saturation)",
         "timeContextFromParameter": "TimeRange",

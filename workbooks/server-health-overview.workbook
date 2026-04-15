@@ -102,7 +102,8 @@
               "additionalResourceOptions": [
                 "value::all"
               ],
-              "showDefault": false
+              "showDefault": false,
+              "selectAllValue": "*"
             },
             "defaultValue": "value::all",
             "queryType": 0,
@@ -129,7 +130,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Heartbeat\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize LastHeartbeat = max(TimeGenerated) by Computer, OSType, ResourceGroup\n| extend Status = iff(LastHeartbeat < ago(5m), '🔴 Offline', '🟢 Online')\n| extend MinutesSinceHeartbeat = datetime_diff('minute', now(), LastHeartbeat)\n| project Computer, Status, ['Last Heartbeat'] = LastHeartbeat, ['Minutes Ago'] = MinutesSinceHeartbeat, ['OS Type'] = OSType, ['Resource Group'] = ResourceGroup\n| sort by Status asc, Computer asc",
+        "query": "Heartbeat\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize LastHeartbeat = max(TimeGenerated) by Computer, OSType, ResourceGroup\n| extend Status = iff(LastHeartbeat < ago(5m), '🔴 Offline', '🟢 Online')\n| extend MinutesSinceHeartbeat = datetime_diff('minute', now(), LastHeartbeat)\n| project Computer, Status, ['Last Heartbeat'] = LastHeartbeat, ['Minutes Ago'] = MinutesSinceHeartbeat, ['OS Type'] = OSType, ['Resource Group'] = ResourceGroup\n| sort by Status asc, Computer asc",
         "size": 0,
         "title": "Server Status — Heartbeat Based",
         "timeContextFromParameter": "TimeRange",
@@ -161,7 +162,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Heartbeat\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize LastHeartbeat = max(TimeGenerated) by Computer\n| extend Status = iff(LastHeartbeat < ago(5m), 'Offline', 'Online')\n| summarize Count = count() by Status",
+        "query": "Heartbeat\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize LastHeartbeat = max(TimeGenerated) by Computer\n| extend Status = iff(LastHeartbeat < ago(5m), 'Offline', 'Online')\n| summarize Count = count() by Status",
         "size": 3,
         "title": "Availability Summary",
         "timeContextFromParameter": "TimeRange",
@@ -197,7 +198,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let cpu = Perf\n| where ObjectName == 'Processor' and CounterName == '% Processor Time' and InstanceName == '_Total'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgCPU = round(avg(CounterValue), 1), MaxCPU = round(max(CounterValue), 1) by Computer;\nlet mem = Perf\n| where ObjectName == 'Memory' and CounterName == 'Available MBytes'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgAvailMB = round(avg(CounterValue), 0) by Computer;\nlet disk = Perf\n| where ObjectName == 'LogicalDisk' and CounterName == '% Free Space'\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize MinFree = round(min(CounterValue), 1) by Computer;\ncpu\n| join kind=leftouter mem on Computer\n| join kind=leftouter disk on Computer\n| project Computer, ['Avg CPU %'] = AvgCPU, ['Max CPU %'] = MaxCPU, ['Avail Memory MB'] = AvgAvailMB, ['Min Disk Free %'] = MinFree\n| sort by ['Avg CPU %'] desc",
+        "query": "let cpu = Perf\n| where ObjectName == 'Processor' and CounterName == '% Processor Time' and InstanceName == '_Total'\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize AvgCPU = round(avg(CounterValue), 1), MaxCPU = round(max(CounterValue), 1) by Computer;\nlet mem = Perf\n| where ObjectName == 'Memory' and CounterName == 'Available MBytes'\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize AvgAvailMB = round(avg(CounterValue), 0) by Computer;\nlet disk = Perf\n| where ObjectName == 'LogicalDisk' and CounterName == '% Free Space'\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize MinFree = round(min(CounterValue), 1) by Computer;\ncpu\n| join kind=leftouter mem on Computer\n| join kind=leftouter disk on Computer\n| project Computer, ['Avg CPU %'] = AvgCPU, ['Max CPU %'] = MaxCPU, ['Avail Memory MB'] = AvgAvailMB, ['Min Disk Free %'] = MinFree\n| sort by ['Avg CPU %'] desc",
         "size": 0,
         "title": "Server Performance At-a-Glance (Selected Time Range)",
         "timeContextFromParameter": "TimeRange",
@@ -246,7 +247,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Perf\n| where ObjectName == 'Processor' and CounterName == '% Processor Time' and InstanceName == '_Total'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgCPU = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
+        "query": "Perf\n| where ObjectName == 'Processor' and CounterName == '% Processor Time' and InstanceName == '_Total'\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize AvgCPU = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
         "size": 0,
         "title": "CPU % Processor Time by Server",
         "timeContextFromParameter": "TimeRange",
@@ -270,7 +271,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Perf\n| where ObjectName == 'Memory' and CounterName == 'Available MBytes'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgAvailMB = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
+        "query": "Perf\n| where ObjectName == 'Memory' and CounterName == 'Available MBytes'\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize AvgAvailMB = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| render timechart",
         "size": 0,
         "title": "Available Memory (MB) by Server",
         "timeContextFromParameter": "TimeRange",
@@ -294,7 +295,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName == '% Free Space'\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgFreePercent = round(avg(CounterValue), 1) by Computer, InstanceName\n| sort by AvgFreePercent asc",
+        "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName == '% Free Space'\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize AvgFreePercent = round(avg(CounterValue), 1) by Computer, InstanceName\n| sort by AvgFreePercent asc",
         "size": 0,
         "title": "Disk Free Space % by Volume",
         "timeContextFromParameter": "TimeRange",
@@ -322,7 +323,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName == '% Free Space'\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgFreePercent = round(avg(CounterValue), 1) by Computer, InstanceName\n| sort by AvgFreePercent asc\n| render barchart",
+        "query": "Perf\n| where ObjectName == 'LogicalDisk' and CounterName == '% Free Space'\n| where InstanceName !in ('_Total', 'HarddiskVolume1')\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize AvgFreePercent = round(avg(CounterValue), 1) by Computer, InstanceName\n| sort by AvgFreePercent asc\n| render barchart",
         "size": 0,
         "title": "Disk Free Space % — Visual",
         "timeContextFromParameter": "TimeRange",
@@ -346,7 +347,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "Perf\n| where ObjectName == 'Network Interface' and CounterName == 'Bytes Total/sec'\n| where Computer in ({Computer}) or '{Computer}' == 'value::all'\n| summarize AvgBytesPerSec = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| extend AvgMbps = round(AvgBytesPerSec * 8 / 1000000, 2)\n| project TimeGenerated, Computer, AvgMbps\n| render timechart",
+        "query": "Perf\n| where ObjectName == 'Network Interface' and CounterName == 'Bytes Total/sec'\n| where '*' in ({Computer}) or Computer in ({Computer})\n| summarize AvgBytesPerSec = avg(CounterValue) by Computer, bin(TimeGenerated, 5m)\n| extend AvgMbps = round(AvgBytesPerSec * 8 / 1000000, 2)\n| project TimeGenerated, Computer, AvgMbps\n| render timechart",
         "size": 0,
         "title": "Network Throughput (Mbps) by Server",
         "timeContextFromParameter": "TimeRange",
