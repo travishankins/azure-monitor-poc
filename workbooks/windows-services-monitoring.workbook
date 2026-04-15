@@ -67,16 +67,18 @@
             "version": "KqlParameterItem/1.0",
             "name": "LogAnalytics",
             "label": "Log Analytics",
-            "type": 5,
+            "type": 2,
             "isRequired": true,
+            "query": "resources\n| where type == \"microsoft.operationalinsights/workspaces\"\n| project value = id, label = name, selected = true",
+            "crossComponentResources": [
+              "{Subscription}"
+            ],
             "typeSettings": {
               "additionalResourceOptions": [],
-              "showDefault": false,
-              "resourceTypeFilter": {
-                "microsoft.operationalinsights/workspaces": true
-              }
+              "showDefault": false
             },
-            "resourceType": "microsoft.operationalinsights/workspaces"
+            "queryType": 1,
+            "resourceType": "microsoft.resources/subscriptions"
           },
           {
             "id": "g2b58a52-7c22-4d11-9e42-1f0e80f1d202",
